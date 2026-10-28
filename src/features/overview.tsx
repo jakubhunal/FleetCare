@@ -455,6 +455,15 @@ export function DeadlinesPage() {
 }
 export function DriverWorkspace() {
   const { tab = "vehicle" } = useParams();
+  const pageTitle: Record<string, string> = {
+    vehicle: "Přehled",
+    orders: "Moje zakázky",
+    trips: "Moje jízdy",
+    fault: "Nahlásit závadu",
+    fuel: "Zadat tankování",
+    requests: "Moje požadavky",
+    documents: "Moje dokumenty",
+  };
   const { s, actor, show } = useFleet(),
     edit = useEditors();
   const d = s.drivers.find((d) => d.id === actor.driverId),
@@ -468,7 +477,7 @@ export function DriverWorkspace() {
     return (
       <>
         <PageHead
-          title="Váš pracovní prostor"
+          title={pageTitle[tab] || "Váš pracovní prostor"}
           subtitle="Zvolte existujícího řidiče v horní liště."
         />
         <Empty
@@ -479,15 +488,25 @@ export function DriverWorkspace() {
     );
   return (
     <div className="driver-workspace">
-      <div className="date-heading">
-        {new Intl.DateTimeFormat("cs-CZ", {
-          dateStyle: "full",
-          timeZone: "Europe/Prague",
-        }).format(new Date())}
-      </div>
+      {tab === "vehicle" && (
+        <div className="date-heading">
+          {new Intl.DateTimeFormat("cs-CZ", {
+            dateStyle: "full",
+            timeZone: "Europe/Prague",
+          }).format(new Date())}
+        </div>
+      )}
       <PageHead
-        title={"Dobrý den, " + d.name.split(" ")[0] + "."}
-        subtitle="Váš pracovní den v přehledu. Jeďte bezpečně."
+        title={
+          tab === "vehicle"
+            ? "Dobrý den, " + d.name.split(" ")[0] + "."
+            : pageTitle[tab] || "Váš pracovní prostor"
+        }
+        subtitle={
+          tab === "vehicle"
+            ? "Váš pracovní den v přehledu. Jeďte bezpečně."
+            : undefined
+        }
       />
       {d.suspended && (
         <Notice error>

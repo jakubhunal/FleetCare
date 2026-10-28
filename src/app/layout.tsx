@@ -35,7 +35,7 @@ const management = [
   ["/settings", "Nastavení", Settings],
 ] as const;
 const driverNav = [
-  ["/my/vehicle", "Moje vozidlo", Truck],
+  ["/my/vehicle", "Přehled", LayoutGrid],
   ["/my/orders", "Moje zakázky", Package],
   ["/my/trips", "Moje jízdy", Route],
   ["/my/fault", "Nahlásit závadu", Wrench],
