@@ -22,4 +22,5 @@
 - Aktuální kontroly: 31 testů prošlo, typecheck/lint/build prošly. API chyby 409/429 a síťová chyba ověřeny bez lokálního fallbacku. Technické předání v docs/ je hotové.
 - Čistý samostatný klon a instalace z lockfile prošly, včetně 31 testů, buildu, lintu, typechecku, kontroly bundlu a smluv beze změny.
 - Následuje: čistý tag a push, teprve potom izolovaná demo větev a její vizuální kontrola.
-- Žádná ostrá služba není připojena. Demo větev zatím neexistuje.
+- Žádná ostrá služba není připojena. Čistý tag `fe-clean-v1` byl pushnut před založením demo větve.
+- V demo větvi: izolovaný seed a namespace, 32 testů prošlo. Vizuálně ověřeno přiřazení rezervy, CCS rozhodnutí, reporty a mobilní řidič. Podrobnosti v docs/demo-review.md.
