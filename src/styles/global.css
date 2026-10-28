@@ -268,6 +268,8 @@ legend {
   min-width: 0;
 }
 .topbar {
+  position: relative;
+  z-index: 30;
   height: 82px;
   background: white;
   border-bottom: 1px solid var(--line);
@@ -276,43 +278,84 @@ legend {
   gap: 25px;
   align-items: center;
 }
-.breadcrumb {
+.header-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.header-search-form {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 46px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.header-search-form:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px #22755725;
+}
+.header-search-form input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+  box-shadow: none;
+}
+.header-search-form input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.header-search-form .search-clear {
+  flex: 0 0 36px;
+  min-height: 38px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+}
+.header-search-form .search-submit {
+  flex: 0 0 40px;
+  min-height: 38px;
+  padding: 8px;
+}
+.header-search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: min(65dvh, 560px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  box-shadow: 0 12px 30px #123e2926;
+  padding: 8px 12px;
+}
+.search-status {
+  padding: 10px 4px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.search-group-title {
+  margin: 12px 4px 4px;
   font-size: 12px;
   color: var(--muted);
-  white-space: nowrap;
 }
-.breadcrumb b {
-  color: #bcc7be;
-  font-weight: 400;
+.header-search-results .search-result > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.breadcrumb strong {
-  font-weight: 500;
-  color: #405d4e;
-}
-.global-search-trigger {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 260px;
-  min-height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fdfefd;
-  color: #78877d;
-  padding: 10px 13px;
-  text-align: left;
-  font-size: 12px;
-}
-.global-search-trigger kbd {
-  margin-left: auto;
-  font-size: 12px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  padding: 0 5px;
+.header-search-results .search-result svg {
+  flex-shrink: 0;
 }
 .role-select {
   display: flex;
@@ -345,11 +388,17 @@ legend {
   font-weight: 700;
 }
 .actor-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 10px 34px;
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
 .actor-bar label {
+  flex: 1;
+  min-width: 180px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -357,6 +406,10 @@ legend {
 }
 .actor-bar select {
   max-width: 350px;
+}
+.actor-bar .role-select {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 .content {
   max-width: 1800px;
@@ -1225,15 +1278,6 @@ dialog::backdrop {
   gap: 12px;
   min-height: 110px;
 }
-.search-form {
-  display: flex;
-  gap: 13px;
-  align-items: center;
-}
-.search-form input {
-  flex: 1;
-  min-width: 0;
-}
 .search-result {
   display: flex;
   gap: 20px;
@@ -1328,16 +1372,6 @@ footer {
   .content {
     padding: 25px 24px;
   }
-  .global-search-trigger {
-    width: 205px;
-  }
-  .role-select > span {
-    display: none;
-  }
-  .breadcrumb > span,
-  .breadcrumb > b {
-    display: none;
-  }
   .dashboard-columns {
     grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
   }
@@ -1363,16 +1397,6 @@ footer {
   .kpi-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .breadcrumb {
-    display: none;
-  }
-  .global-search-trigger {
-    margin-left: 0;
-    flex: 1;
-  }
-  .role-select {
-    margin-left: auto;
-  }
   .document-layout {
     grid-template-columns: 1fr;
   }
@@ -1395,6 +1419,10 @@ footer {
   }
 }
 @media (max-width: 760px) {
+  .header-search-form input {
+    font-size: 16px;
+    padding: 8px;
+  }
   .sidebar {
     transform: translateX(-100%);
     width: 252px;
@@ -1423,18 +1451,6 @@ footer {
     height: 65px;
     padding: 0 14px;
     gap: 12px;
-  }
-  .global-search-trigger {
-    width: 44px;
-    max-width: 44px;
-    min-height: 44px;
-    flex: 0 0 44px;
-    justify-content: center;
-    padding: 8px;
-  }
-  .global-search-trigger span,
-  .global-search-trigger kbd {
-    display: none;
   }
   .role-select select {
     max-width: 158px;
@@ -1721,15 +1737,6 @@ footer {
     right: 18px;
     bottom: 16px;
     font-size: 12px;
-  }
-  .search-form {
-    gap: 8px;
-  }
-  .search-form .btn {
-    padding: 9px;
-  }
-  .search-form > svg {
-    display: none;
   }
   .search-result {
     font-size: 13px;

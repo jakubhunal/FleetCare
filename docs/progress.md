@@ -1,5 +1,8 @@
 # FleetCare — stav předání
 
+- Hlavička: odstraněny drobečky a text Zobrazit jako. Vyhledávání přímo v inputu přes celou dostupnou šířku, výsledky pod polem bez dialogu, lupa/Enter a podmíněný křížek. Přepínání rolí zachováno v řádku kontextu pod hlavičkou. Escape, šipky a Tab podporují ovládání bez myši; změna stránky/role resetuje hledání.
+- Kontrola nové hlavičky: typecheck, lint, 36 testů a build prošly. Produkční náhled ověřen na desktopu i 390px mobilu: přímé psaní bez dialogu, odeslání lupou, prázdný výsledek, podmíněný křížek, vyčištění a Escape; mobil bez vodorovného přetečení. Po pushnutí ověřit navíc skutečné výsledky nad demo daty a Pages verzi.
+
 - Moje požadavky přejmenováno na Moje úkoly: pouze vlastní ukončené jízdy bez koncového tachometru a skutečně naplánovaný servis aktuálně dostupných vozidel. Bez tabulky hlášení a odkazu na dokumenty. Termín, SPZ, provozní místo servisu a odkaz na detail; splněné položky automaticky mizí podle zdrojových záznamů.
 
 - Řidičova úvodní stránka je v navigaci Přehled. Datum a pozdrav patří jen na přehled; ostatní sekce mají vlastní nadpis. Odstraněn 1000px limit řidičova obsahu, který nyní využívá celou šířku stejného kontejneru jako fleet manažer.

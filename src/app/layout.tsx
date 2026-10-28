@@ -12,17 +12,16 @@ import {
   CalendarDays,
   Settings,
   BarChart3,
-  Search,
   Menu,
-  ArrowUpRight,
   FileText,
   Receipt,
   ClipboardList,
 } from "lucide-react";
 import { useFleet } from "./context";
-import { Button, Dialog, Empty, Notice } from "../components/ui";
+import { Button } from "../components/ui";
 import { roles, type Actor } from "../domain/models";
 import { config } from "./config";
+import { HeaderSearch } from "./header-search";
 const management = [
   ["/", "Přehled", LayoutGrid],
   ["/vehicles", "Vozidla", Truck],
@@ -50,7 +49,7 @@ export function Layout({
   children: React.ReactNode;
   onActor: (actor: Actor) => void;
 }) {
-  const { actor, repo, show } = useFleet();
+  const { actor, repo } = useFleet();
   const [menu, setMenu] = useState(false);
   const location = useLocation();
   useEffect(() => {
@@ -64,11 +63,6 @@ export function Layout({
     staleTime: 60000,
   });
   const entries = actor.role === "Řidič" ? driverNav : management;
-  const selected = entries.find(([path]) =>
-    path === "/"
-      ? location.pathname === "/"
-      : location.pathname.startsWith(path),
-  );
   return (
     <>
       <a
@@ -128,24 +122,14 @@ export function Layout({
           >
             <Menu size={21} />
           </Button>
-          <div className="breadcrumb">
-            <span>Pracovní prostor</span>
-            <b>/</b>
-            <strong>{selected?.[1] || "Detail"}</strong>
-          </div>
-          <button
-            className="global-search-trigger"
-            onClick={() => show(<GlobalSearch />)}
-            aria-label="Globální hledání"
-          >
-            <Search size={18} />
-            <span>Hledat v aplikaci…</span>
-            <kbd>↵</kbd>
-          </button>
+          <HeaderSearch
+            key={`${actor.role}:${actor.driverId}:${location.pathname}`}
+          />
+        </header>
+        <div className="actor-bar">
           <label className="role-select">
-            <span>Zobrazit jako</span>
             <select
-              aria-label="Zobrazit jako"
+              aria-label="Role"
               value={actor.role}
               onChange={(e) =>
                 onActor({
@@ -159,31 +143,31 @@ export function Layout({
               ))}
             </select>
           </label>
-        </header>
-        {actor.role === "Řidič" && (
-          <div className="actor-bar">
-            <label>
-              Řidič
-              <select
-                aria-label="Vybraný řidič"
-                value={actor.driverId || ""}
-                onChange={(e) =>
-                  onActor({ ...actor, driverId: e.target.value || null })
-                }
-              >
-                <option value="">Zvolte existujícího řidiče…</option>
-                {identities.data?.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {identities.error && (
-              <span role="alert">{identities.error.message}</span>
-            )}
-          </div>
-        )}
+          {actor.role === "Řidič" && (
+            <>
+              <label>
+                Řidič
+                <select
+                  aria-label="Vybraný řidič"
+                  value={actor.driverId || ""}
+                  onChange={(e) =>
+                    onActor({ ...actor, driverId: e.target.value || null })
+                  }
+                >
+                  <option value="">Zvolte existujícího řidiče…</option>
+                  {identities.data?.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {identities.error && (
+                <span role="alert">{identities.error.message}</span>
+              )}
+            </>
+          )}
+        </div>
         <div className={"mode-banner " + (config.label ? "demo" : "")}>
           {config.label ||
             (repo.mode === "local"
@@ -209,87 +193,5 @@ export function Layout({
         </main>
       </div>
     </>
-  );
-}
-function GlobalSearch() {
-  const { repo, actor, close } = useFleet();
-  const [query, setQuery] = useState(""),
-    [debounced, setDebounced] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(query), 200);
-    return () => clearTimeout(timer);
-  }, [query]);
-  const result = useQuery({
-    queryKey: ["search", repo.mode, actor.role, actor.driverId, debounced],
-    queryFn: ({ signal }) => repo.search(actor, debounced, signal),
-    enabled: !!debounced.trim(),
-    retry: false,
-  });
-  const groups = Array.from(new Set(result.data?.map((r) => r.type) || []));
-  return (
-    <Dialog title="Hledat v pracovním prostoru" onClose={close}>
-      <div className="dialog-body">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setDebounced(query);
-          }}
-          className="search-form"
-        >
-          <Search size={21} />
-          <input
-            autoFocus
-            aria-label="Globální hledání"
-            placeholder="SPZ, VIN, řidič, zakázka, závada…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <Button
-            onClick={() => {
-              setQuery("");
-              setDebounced("");
-            }}
-          >
-            Vymazat
-          </Button>
-        </form>
-        {!query ? (
-          <p className="muted">
-            Hledání pracuje napříč oblastmi dostupnými vašemu kontextu.
-          </p>
-        ) : result.isFetching ? (
-          <p role="status">Vyhledávání…</p>
-        ) : result.error ? (
-          <Notice error>{result.error.message}</Notice>
-        ) : result.data?.length ? (
-          groups.map((group) => (
-            <section key={group}>
-              <h3 className="section-title">{group}</h3>
-              {result.data
-                .filter((r) => r.type === group)
-                .map((r) => (
-                  <Link
-                    className="search-result"
-                    key={r.id}
-                    to={r.path}
-                    onClick={close}
-                  >
-                    <div>
-                      <strong>{r.title}</strong>
-                      <small>{r.subtitle}</small>
-                    </div>
-                    <ArrowUpRight size={17} />
-                  </Link>
-                ))}
-            </section>
-          ))
-        ) : (
-          <Empty
-            title="Žádné výsledky"
-            text="Zkuste jiný výraz nebo zkontrolujte zvolený kontext."
-          />
-        )}
-      </div>
-    </Dialog>
   );
 }
