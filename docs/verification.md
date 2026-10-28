@@ -5,7 +5,7 @@
 - Strict TypeScript: prošel.
 - Čistý samostatný klon: `npm ci --offline` z uzamčených závislostí, typecheck, lint, 31 testů, build a kontrola čistého bundlu prošly. Regenerace smluv nevytvořila rozdíl. Ověřeno v plné cestě Windows; první pokus se zkrácenou TEMP cestou nebyl považován za úspěšné ověření.
 - ESLint: prošel.
-- Vitest: aktuálně 32 testů v šesti souborech, prošly. HTTP testy použily dočasný skutečný Node server na 127.0.0.1. Dodatečný test ověřuje, že řidiči nejsou dostupné cenové originály objednávek ani servisní faktury.
+- Vitest: aktuálně 34 testů v sedmi souborech, prošly. HTTP testy použily dočasný skutečný Node server na 127.0.0.1. Dodatečný test ověřuje, že řidiči nejsou dostupné cenové originály objednávek ani servisní faktury.
 - Produkční Vite build: prošel. Knihovny PDF, fonty a ExcelJS se načítají až při exportu; Vite upozorňuje na velikost těchto exportních balíků. Nejde o chybu buildu.
 - OpenAPI a JSON Schema jsou generované z runtime schémat. `npm run contracts` prošel.
 - Čistý build lze kontrolovat pomocí `node scripts/check-clean-build.mjs`; pro demo větev tato kontrola záměrně neplatí.
@@ -32,3 +32,6 @@ Prohlížečem ověřeno:
 Neproběhlo připojení ostré DB, skutečné autentizace, e-mailů, Make ani OCR. Jejich výsledek není předstírán. Nebyla provedena certifikace WCAG ani test čtečkou obrazovky; proběhla kontrola sémantiky a klávesnice. Produkční kapacitu skutečného backendu a spolehlivost extrakce ověří integrační tým. Velikost úplné kontextové projekce a další růst historie popisuje architecture.md.
 
 Ukázková větev byla vytvořena až z pushnutého `fe-clean-v1`. Její test ověřil opakovatelnost seedu a zachování úprav. V prohlížeči prošlo přiřazení rezervního vozidla a samostatně řidičky k importované zakázce i vyřešení CCS s důvodem; oba výsledky přežily reload. Změna konce reportového období změnila palivo, spotřebu a předběžný součet. Naplněný mobilní řidič neměl vodorovný overflow. Společné opravy vznikají nejprve v main a přenášejí se do demo větve.
+
+Doplněny testy české půlnoci a jízdy přes hranici měsíců. Výnos zakázky používá jedinou poslední objednanou zastávku pro časové zařazení; nejde o doložený účetní okamžik doručení. Demo přidává jeden samostatný test seedu (35 celkem).
+

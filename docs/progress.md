@@ -1,9 +1,10 @@
 # FleetCare — stav předání
 
-- Hotový čistý FE: evidence, role, vazby, validace, IndexedDB + Blob, dokumenty, jízdy, servis, CCS, termíny/plány, reporty a PDF/XLSX. Integrační dokumentace v docs/.
-- GitHub: https://github.com/jakubhunal/FleetCare. Původní prototyp: prototype-reference. Ověřený čistý základ fe-clean-v1 byl pushnut před demo větví. Poslední čisté opravy: main / fe-clean-v1.1 (3c2e0b8).
-- Main: 32 testů prošlo, strict typecheck, lint a build prošly; čistý klon / npm ci ověřeny. Čistý bundle bez seedu a odstraněných akcí.
-- Skutečné UI kontroly: desktop/tablet/mobil, prázdný start, vozidlo/řidič/přidělení po reloadu, vlastní jízda a 45 km, skutečné přílohy/náhled/smazání, hledání, klávesnice, PDF rendering a XLSX datumové/číselné buňky.
-- codex/demo-review: samostatný idempotentní seed a DB, vynucený lokální adaptér. Po 32 úspěšných testech proběhlo přiřazení rezervy, CCS řešení a reportové/mobilní QA. Společné opravy se nyní přenesly z main: izolace filtrů, předvyplnění přiřazení, čtyři hlavní řidičské akce a ochrana cenových originálů.
-- Nejbližší krok: ověřit aktualizovanou demo větev (33 testů) a poslední UI, pushnout aktualizaci a dokončit předání.
-- Žádná ostrá DB, identita, OCR, Make ani e-mail nejsou připojené. Konkrétní práce kolegů je v docs/backend-handover.md. Vzhled zatím neoznačujeme za schválený zadavatelem.
+- GitHub: https://github.com/jakubhunal/FleetCare. Čistá větev main; oddělená codex/demo-review. Původní prototyp je v prototype-reference.
+- Hotový FE: evidence, role, vazby, validace, IndexedDB a Blob, dokumenty, jízdy, servis, CCS, termíny/plány, reporty, PDF/XLSX a implementovaný HTTP klient. Dokumentace předání je v docs/.
+- Čistý základ fe-clean-v1 byl ověřen a pushnut před založením demo větve. Společné opravy vznikly nejprve v main a jsou přenášeny do demo větve. Seed není v main ani jeho buildu.
+- Main: 34 testů; demo má navíc test idempotentního seedu (35 celkem). Typecheck, lint a produkční build jsou součástí ověřování. Instalace z lockfile byla samostatně ověřena v čistém klonu.
+- UI ověřeno na desktopu/tabletu/mobilu: prázdný start, perzistence vozidla/řidiče/přidělení, vlastní jízda, skutečné soubory a smazání, hledání, klávesnice, PDF rendering a XLSX typy. Demo: přiřazení rezervy, CCS rozhodnutí, reportové filtry, čtyři hlavní mobilní akce a oddělené filtry tabulek. Konzole kontrolovaných produkčních pohledů bez chyb.
+- Poslední oprava: české kalendářní datum pro období; jízdy přes měsíční hranici se bez přesného rozdělení km nezahrnují do jmenovatele. Zakázka je časově zařazená jedinou poslední objednanou zastávkou.
+- Další krok zadavatele: připomínky k demo větvi podle docs/review-workflow.md. Vzhled není označen za schválený bez jeho vyjádření.
+- Další krok kolegů: DB/gateway, ověřená identita a oprávnění, soukromé soubory, Make/OCR/e-maily a integrační akceptace podle docs/backend-handover.md. Žádná ostrá služba není předstíraná.

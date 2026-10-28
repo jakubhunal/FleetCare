@@ -1,3 +1,4 @@
+import { dateKey } from "../lib/format";
 import type { Workspace } from "./models";
 export type Scope = {
   from: string;
@@ -24,14 +25,14 @@ export function canonicalCosts(s: Workspace) {
                 t.cardId === f.cardId &&
                 t.vehicleId === f.vehicleId &&
                 t.currency === f.currency &&
-                t.at.slice(0, 10) === f.at.slice(0, 10),
+                dateKey(t.at) === dateKey(f.at),
             )
           ),
       )
       .map((f) => ({
         id: f.id,
         vehicleId: f.vehicleId,
-        date: f.at.slice(0, 10),
+        date: dateKey(f.at),
         amountMinor: f.amountMinor!,
         currency: f.currency,
         category: "Palivo",
@@ -42,7 +43,7 @@ export function canonicalCosts(s: Workspace) {
       .map((t) => ({
         id: t.id,
         vehicleId: t.vehicleId!,
-        date: t.at.slice(0, 10),
+        date: dateKey(t.at),
         amountMinor: t.resolvedMinor ?? t.amountMinor,
         currency: t.currency,
         category: "Palivo",
@@ -69,8 +70,8 @@ export function consumption(
     .filter(
       (f) =>
         f.vehicleId === vehicleId &&
-        f.at.slice(0, 10) >= from &&
-        f.at.slice(0, 10) <= to,
+        dateKey(f.at) >= from &&
+        dateKey(f.at) <= to,
     )
     .sort((a, b) => a.at.localeCompare(b.at));
   let anchor: (typeof fuels)[number] | null = null;
@@ -107,7 +108,7 @@ export function report(s: Workspace, scope: Scope) {
   );
   const ids = new Set(vehicles.map((v) => v.id));
   const inPeriod = (d: string) =>
-    d.slice(0, 10) >= scope.from && d.slice(0, 10) <= scope.to;
+    dateKey(d) >= scope.from && dateKey(d) <= scope.to;
   const costs = canonicalCosts(s).filter(
     (c) =>
       ids.has(c.vehicleId) &&
@@ -117,20 +118,34 @@ export function report(s: Workspace, scope: Scope) {
         (scope.costType === "fuel") === (c.category === "Palivo")),
   );
   const trips = s.trips.filter(
-    (t) => ids.has(t.vehicleId) && t.endAt && inPeriod(t.startAt),
+    (t) =>
+      ids.has(t.vehicleId) &&
+      t.endAt &&
+      dateKey(t.startAt) <= scope.to &&
+      dateKey(t.endAt) >= scope.from,
   );
   const orders = s.orders.filter(
     (o) =>
       o.vehicleId &&
       ids.has(o.vehicleId) &&
       o.currency === scope.currency &&
-      o.stops.some((x) => x.from && inPeriod(x.from)),
+      inPeriod(
+        o.stops
+          .flatMap((x) => [x.to, x.from])
+          .filter((x): x is string => !!x)
+          .sort()
+          .at(-1) || "0000-01-01",
+      ),
   );
   const rows = vehicles.map((v) => {
     const c = costs.filter((c) => c.vehicleId === v.id);
     const ts = trips.filter((t) => t.vehicleId === v.id);
     const km = ts.reduce(
-      (n, t) => n + (t.endKm === null ? 0 : t.endKm - t.startKm),
+      (n, t) =>
+        n +
+        (t.endKm === null || !inPeriod(t.startAt) || !inPeriod(t.endAt!)
+          ? 0
+          : t.endKm - t.startKm),
       0,
     );
     const actual = c
@@ -142,6 +157,8 @@ export function report(s: Workspace, scope: Scope) {
       category: v.category,
       km,
       missing: ts.filter((t) => t.endKm === null).length,
+      boundary: ts.filter((t) => !inPeriod(t.startAt) || !inPeriod(t.endAt!))
+        .length,
       litres: s.fuels
         .filter((f) => f.vehicleId === v.id && inPeriod(f.at))
         .reduce((n, f) => n + (f.litres ?? 0), 0),
@@ -176,6 +193,7 @@ export function report(s: Workspace, scope: Scope) {
   });
   return {
     rows,
+    boundaryTrips: rows.reduce((n, r) => n + r.boundary, 0),
     costs,
     km: rows.reduce((n, r) => n + r.km, 0),
     actualMinor: rows.reduce((n, r) => n + r.actualMinor, 0),

@@ -1,3 +1,4 @@
+import { dateKey } from "../lib/format";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Download } from "lucide-react";
@@ -213,6 +214,16 @@ export function ReportsPage({ costsOnly = false }: { costsOnly?: boolean }) {
           )}
         </Panel>
         <Panel title="Úplnost a metodika">
+          {!!result.boundaryTrips && (
+            <Notice>
+              {result.boundaryTrips} jízd překračuje hranici období. Jejich km
+              bez rozděleného podkladu nejsou zahrnuty do měsíčního jmenovatele.
+            </Notice>
+          )}
+          <p>
+            Časové zařazení zakázek používá poslední objednanou zastávku. Stav
+            dokončení a plánované výnosy se vyhodnocují odděleně.
+          </p>
           <p>
             Období {date(scope.from)} — {date(scope.to)}. Měny se vyhodnocují
             odděleně.
@@ -501,8 +512,8 @@ export function ExportDialog({
                 } else {
                   const rows = s.trips.filter(
                     (t) =>
-                      t.startAt.slice(0, 10) >= scope.from &&
-                      t.startAt.slice(0, 10) <= scope.to &&
+                      dateKey(t.startAt) >= scope.from &&
+                      dateKey(t.startAt) <= scope.to &&
                       (!scope.vehicleId || t.vehicleId === scope.vehicleId) &&
                       (!vehicles.length || vehicles.includes(t.vehicleId)) &&
                       (!driver || t.driverId === driver) &&

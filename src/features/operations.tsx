@@ -1,3 +1,4 @@
+import { dateKey } from "../lib/format";
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { Download, Pencil, Send, Square } from "lucide-react";
@@ -381,8 +382,8 @@ export function TripsPage() {
         <TripsTable
           rows={s.trips.filter(
             (t) =>
-              (!from || t.startAt.slice(0, 10) >= from) &&
-              (!to || t.startAt.slice(0, 10) <= to),
+              (!from || dateKey(t.startAt) >= from) &&
+              (!to || dateKey(t.startAt) <= to),
           )}
         />
       </Panel>

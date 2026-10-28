@@ -1,3 +1,4 @@
+import { dateKey } from "../lib/format";
 import type { Workspace } from "./models";
 /** Conservative matching: known card, exact time and litres; no fuzzy identity guess. */
 export function reconcileCCS(s: Workspace, statementId: string) {
@@ -13,8 +14,7 @@ export function reconcileCCS(s: Workspace, statementId: string) {
     };
     const card = s.cards.find((c) => c.id === t.cardId);
     const binding = card?.bindings.find(
-      (b) =>
-        b.from <= t.at.slice(0, 10) && (!b.to || b.to >= t.at.slice(0, 10)),
+      (b) => b.from <= dateKey(t.at) && (!b.to || b.to >= dateKey(t.at)),
     );
     if (!t.vehicleId && binding) t.vehicleId = binding.vehicleId;
     if (

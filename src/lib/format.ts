@@ -3,6 +3,13 @@ export const normalize = (value: unknown) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f\s]/g, "")
     .toLowerCase();
+/** Calendar date in the application's timezone, not the UTC date substring. */
+export const dateKey = (value: string) =>
+  value.length === 10
+    ? value
+    : new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Prague" }).format(
+        new Date(value),
+      );
 export const number = (value: number | null | undefined, unit = "") =>
   value == null
     ? "Není doloženo"
