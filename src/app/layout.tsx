@@ -91,16 +91,6 @@ export function Layout({
           </span>
           FleetCare<span className="brand-period">.</span>
         </Link>
-        <div className="workspace-label">
-          <span className="workspace-monogram">FC</span>
-          <div>
-            <strong>Správa vozového parku</strong>
-            <small>Společný pracovní prostor</small>
-          </div>
-        </div>
-        <div className="nav-label">
-          {actor.role === "Řidič" ? "MŮJ PRACOVNÍ DEN" : "SPRÁVA DOPRAVY"}
-        </div>
         <nav aria-label="Hlavní navigace">
           {entries.map(([path, label, Icon]) => (
             <NavLink
@@ -120,20 +110,6 @@ export function Layout({
             </NavLink>
           )}
         </nav>
-        <div className="sidebar-bottom">
-          <span className="environment-pill">
-            <i />
-            {repo.mode === "local"
-              ? "Lokální pracovní prostor"
-              : "Připojené API"}
-          </span>
-          <p>
-            Jasný přehled.
-            <br />
-            Klidnější den na cestách.
-          </p>
-          <span className="sidebar-version">FleetCare · 1.0</span>
-        </div>
       </aside>
       {menu && (
         <button
