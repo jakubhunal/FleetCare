@@ -2,6 +2,10 @@
 
 Funkční český frontend správy vozového parku. Čistá větev `main` startuje bez ukázkových provozních dat. Původní statický prototyp je zachován v tagu `prototype-reference`, závazné zadání v `FleetCare_zadani_oficialni_FE.md`.
 
+**[Otevřít živé demo na GitHub Pages](https://jakubhunal.github.io/FleetCare/)** · [Postup práce přes Git](CONTRIBUTING.md) · [Automatické publikování](docs/deployment.md)
+
+Dokončené změny se vždy commitují a pushují na GitHub. Úspěšně zkontrolovaný `main` se automaticky přenáší do `codex/demo-review`; každý demo push spustí kontroly a publikování nejnovější ověřené verze. Identifikátor nasazeného commitu je v patičce aplikace a ve [version.json](https://jakubhunal.github.io/FleetCare/version.json).
+
 ## Spuštění
 
 Node.js 22.12+ nebo 24 LTS a npm. V kořeni repozitáře:
@@ -21,7 +25,7 @@ npm run build
 npm run preview
 ```
 
-Build je v dist/. Produkční server musí mít SPA fallback na index.html pro /vehicles/_, /drivers/_ a další aplikační cesty. Vite dev a preview fallback poskytují. Není připojen veřejný hosting. `npm run contracts` regeneruje OpenAPI a schéma událostí; `npm run format` sjednotí zdrojový formát.
+Build je v dist/. Výchozí produkční server musí mít SPA fallback na index.html pro /vehicles/_, /drivers/_ a další aplikační cesty. Vite dev a preview fallback poskytují. GitHub Pages build používá základ `/FleetCare/` a HashRouter, takže funguje i obnovení přímého odkazu bez serverového fallbacku. `npm run contracts` regeneruje OpenAPI a schéma událostí; `npm run format` sjednotí zdrojový formát.
 
 ## Lokální režim a první použití
 

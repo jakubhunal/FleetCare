@@ -1,0 +1,61 @@
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [codex/demo-review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer demo push supersedes an unfinished deployment of an older commit.
+concurrency:
+  group: fleetcare-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/codex/demo-review'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run contracts
+      - run: git diff --exit-code -- docs/openapi.json docs/events.schema.json
+      - name: Build demo for the Pages project path
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /FleetCare/
+          VITE_ROUTER_MODE: hash
+          VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_DATA_ADAPTER: local
+      - name: Record deployed source version
+        run: node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync("dist/version.json", JSON.stringify({commit:process.env.GITHUB_SHA, branch:"codex/demo-review"}) + "\n");'
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy verified demo
+        id: deployment
+        uses: actions/deploy-pages@v4

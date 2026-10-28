@@ -1,5 +1,8 @@
 # FleetCare — stav předání
 
+- Probíhá doplnění GitHub Pages: base `/FleetCare/`, hash odkazy pro reload, viditelný commit, CI publikování demo pushů a automatický přenos ověřeného main do dema. Ještě ověřit běh Actions a skutečnou živou stránku.
+- Pravidla pro kolegy a agenty: CONTRIBUTING.md a AGENTS.md; dokončené celky musí být ověřené, commitnuté a pushnuté. Provoz publikování popisuje docs/deployment.md.
+
 - GitHub: https://github.com/jakubhunal/FleetCare. Čistá větev main; oddělená codex/demo-review. Původní prototyp je v prototype-reference.
 - Hotový FE: evidence, role, vazby, validace, IndexedDB a Blob, dokumenty, jízdy, servis, CCS, termíny/plány, reporty, PDF/XLSX a implementovaný HTTP klient. Dokumentace předání je v docs/.
 - Čistý základ fe-clean-v1 byl ověřen a pushnut před založením demo větve. Společné opravy vznikly nejprve v main a jsou přenášeny do demo větve. Seed není v main ani jeho buildu.

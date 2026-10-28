@@ -1,0 +1,58 @@
+name: Sync verified main to demo
+
+on:
+  workflow_run:
+    workflows: [Frontend checks]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: fleetcare-sync-demo
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: codex/demo-review
+          fetch-depth: 0
+      - name: Merge only the latest verified main commit
+        id: merge
+        env:
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin main codex/demo-review
+          if [ "$(git rev-parse origin/main)" != "$VERIFIED_SHA" ]; then
+            echo "A newer main commit is being checked; skipping this older run."
+            exit 0
+          fi
+          if git merge-base --is-ancestor "$VERIFIED_SHA" HEAD; then
+            echo "Demo already includes this main commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git merge --no-ff --no-edit "$VERIFIED_SHA"; then
+            git merge --abort
+            echo "::error::Merge conflict: resolve main into codex/demo-review locally, verify and push. The published demo stays unchanged."
+            exit 1
+          fi
+          git push origin HEAD:codex/demo-review
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      # GITHUB_TOKEN pushes do not trigger push workflows. Dispatch explicitly.
+      - name: Verify and publish the updated demo
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref codex/demo-review --repo "$GITHUB_REPOSITORY"

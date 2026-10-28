@@ -71,7 +71,14 @@ export function Layout({
   );
   return (
     <>
-      <a href="#main" className="skip-link">
+      <a
+        href="#main"
+        className="skip-link"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main")?.focus();
+        }}
+      >
         Přejít k obsahu
       </a>
       <aside className={"sidebar " + (menu ? "open" : "")}>
@@ -211,6 +218,16 @@ export function Layout({
           {children}
           <footer>
             <span>FleetCare © {new Date().getFullYear()}</span>
+            {import.meta.env.VITE_BUILD_SHA && (
+              <a
+                href={`https://github.com/jakubhunal/FleetCare/commit/${import.meta.env.VITE_BUILD_SHA}`}
+                target="_blank"
+                rel="noreferrer"
+                title="Zdrojový commit nasazené verze"
+              >
+                Verze {import.meta.env.VITE_BUILD_SHA.slice(0, 7)}
+              </a>
+            )}
             <span>{actor.role} · přepínač kontextu bez přihlášení</span>
           </footer>
         </main>
