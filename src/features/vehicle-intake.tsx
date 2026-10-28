@@ -1,4 +1,4 @@
-import { ChevronDown, Plus, Upload } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useFleet } from "../app/context";
 import { Button, Dialog } from "../components/ui";
 import { useEditors } from "./editors";
@@ -30,7 +30,7 @@ export function AddVehicleButton() {
   const add = useAddVehicle();
   return (
     <Button primary onClick={add} aria-haspopup="dialog">
-      <Plus size={18} /> Přidat vozidlo <ChevronDown size={17} />
+      <Plus size={18} /> Přidat vozidlo
     </Button>
   );
 }
