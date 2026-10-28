@@ -85,6 +85,19 @@ export function Layout({
           </span>
           FleetCare<span className="brand-period">.</span>
         </Link>
+        <label className="role-select">
+          <select
+            aria-label="Role"
+            value={actor.role}
+            onChange={(e) =>
+              onActor({ role: e.target.value as Actor["role"], driverId: null })
+            }
+          >
+            {roles.map((role) => (
+              <option key={role}>{role}</option>
+            ))}
+          </select>
+        </label>
         <nav aria-label="Hlavní navigace">
           {entries.map(([path, label, Icon]) => (
             <NavLink
@@ -126,48 +139,30 @@ export function Layout({
             key={`${actor.role}:${actor.driverId}:${location.pathname}`}
           />
         </header>
-        <div className="actor-bar">
-          <label className="role-select">
-            <select
-              aria-label="Role"
-              value={actor.role}
-              onChange={(e) =>
-                onActor({
-                  role: e.target.value as Actor["role"],
-                  driverId: null,
-                })
-              }
-            >
-              {roles.map((r) => (
-                <option key={r}>{r}</option>
-              ))}
-            </select>
-          </label>
-          {actor.role === "Řidič" && (
-            <>
-              <label>
-                Řidič
-                <select
-                  aria-label="Vybraný řidič"
-                  value={actor.driverId || ""}
-                  onChange={(e) =>
-                    onActor({ ...actor, driverId: e.target.value || null })
-                  }
-                >
-                  <option value="">Zvolte existujícího řidiče…</option>
-                  {identities.data?.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {identities.error && (
-                <span role="alert">{identities.error.message}</span>
-              )}
-            </>
-          )}
-        </div>
+        {actor.role === "Řidič" && (
+          <div className="actor-bar">
+            <label>
+              Řidič
+              <select
+                aria-label="Vybraný řidič"
+                value={actor.driverId || ""}
+                onChange={(e) =>
+                  onActor({ ...actor, driverId: e.target.value || null })
+                }
+              >
+                <option value="">Zvolte existujícího řidiče…</option>
+                {identities.data?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {identities.error && (
+              <span role="alert">{identities.error.message}</span>
+            )}
+          </div>
+        )}
         <div className={"mode-banner " + (config.label ? "demo" : "")}>
           {config.label ||
             (repo.mode === "local"

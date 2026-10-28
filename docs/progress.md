@@ -1,7 +1,9 @@
 # FleetCare — stav předání
 
-- Hlavička: odstraněny drobečky a text Zobrazit jako. Vyhledávání přímo v inputu přes celou dostupnou šířku, výsledky pod polem bez dialogu, lupa/Enter a podmíněný křížek. Přepínání rolí zachováno v řádku kontextu pod hlavičkou. Escape, šipky a Tab podporují ovládání bez myši; změna stránky/role resetuje hledání.
-- Kontrola nové hlavičky: typecheck, lint, 36 testů a build prošly. Produkční náhled ověřen na desktopu i 390px mobilu: přímé psaní bez dialogu, odeslání lupou, prázdný výsledek, podmíněný křížek, vyčištění a Escape; mobil bez vodorovného přetečení. Po pushnutí ověřit navíc skutečné výsledky nad demo daty a Pages verzi.
+- Role se přepíná pod logem v levé navigaci, na mobilu v otevřeném menu. Vyhledávání zachovává chování i pozici s maximální šířkou 800 px. Jednotný chevron všech běžných selectů je 14 px od pravého okraje, text má vyhrazených 44 px; nativní ovládání a režim vysokého kontrastu zůstávají zachované.
+
+- Hlavička: odstraněny drobečky a text Zobrazit jako. Vyhledávání přímo v inputu, výsledky pod polem bez dialogu, lupa/Enter a podmíněný křížek. Escape, šipky a Tab podporují ovládání bez myši; změna stránky/role resetuje hledání. Aktuální umístění role a limit šířky viz výše.
+- Kontrola inline hledání: typecheck, lint, 36 testů a build prošly. Produkční náhled i Pages ověřeny na desktopu a 390px mobilu: přímé psaní bez dialogu, odeslání lupou/Enterem, prázdný výsledek, křížek a Escape se zachováním dotazu. Nad demo daty prošlo hledání SPZ bez mezer, výběr výsledku šipkou/Enterem, detail a omezení podle role; mobil bez vodorovného přetečení.
 
 - Moje požadavky přejmenováno na Moje úkoly: pouze vlastní ukončené jízdy bez koncového tachometru a skutečně naplánovaný servis aktuálně dostupných vozidel. Bez tabulky hlášení a odkazu na dokumenty. Termín, SPZ, provozní místo servisu a odkaz na detail; splněné položky automaticky mizí podle zdrojových záznamů.
 

@@ -106,6 +106,21 @@ textarea {
   min-height: 100px;
   resize: vertical;
 }
+/* Keep native select behavior, with a consistently inset chevron. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  padding-inline-end: 44px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23385448' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+}
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]) {
+    appearance: auto;
+    background-image: none;
+  }
+}
 input[type="checkbox"],
 input[type="radio"] {
   width: 19px;
@@ -282,6 +297,7 @@ legend {
   position: relative;
   flex: 1;
   min-width: 0;
+  max-width: 800px;
 }
 .header-search-form {
   display: flex;
@@ -375,6 +391,16 @@ legend {
   width: auto;
   max-width: 170px;
 }
+.sidebar .role-select {
+  margin-bottom: 20px;
+}
+.sidebar .role-select select {
+  width: 100%;
+  max-width: none;
+  min-height: 44px;
+  padding-block: 10px;
+  padding-inline-start: 12px;
+}
 .mode-banner {
   font-size: 11px;
   padding: 7px 34px;
@@ -406,10 +432,6 @@ legend {
 }
 .actor-bar select {
   max-width: 350px;
-}
-.actor-bar .role-select {
-  flex: 0 0 auto;
-  min-width: 0;
 }
 .content {
   max-width: 1800px;
