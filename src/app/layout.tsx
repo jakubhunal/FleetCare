@@ -40,7 +40,7 @@ const driverNav = [
   ["/my/trips", "Moje jízdy", Route],
   ["/my/fault", "Nahlásit závadu", Wrench],
   ["/my/fuel", "Zadat tankování", Receipt],
-  ["/my/requests", "Moje požadavky", ClipboardList],
+  ["/my/requests", "Moje úkoly", ClipboardList],
   ["/my/documents", "Moje dokumenty", FileText],
 ] as const;
 export function Layout({

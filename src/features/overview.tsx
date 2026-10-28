@@ -8,7 +8,6 @@ import {
   Receipt,
   Play,
   Square,
-  FileText,
 } from "lucide-react";
 import { useFleet } from "../app/context";
 import {
@@ -23,6 +22,7 @@ import {
 import { useEditors } from "./editors";
 import { DocumentList } from "./documents";
 import { useAddVehicle } from "./vehicle-intake";
+import { DriverTasks } from "./driver-tasks";
 import { FaultTable, FuelTable, OrderTable, TripsTable } from "./tables";
 import { Kpi } from "./reports";
 import { FuelIntakeDialog } from "./fuel-intake";
@@ -461,7 +461,7 @@ export function DriverWorkspace() {
     trips: "Moje jízdy",
     fault: "Nahlásit závadu",
     fuel: "Zadat tankování",
-    requests: "Moje požadavky",
+    requests: "Moje úkoly",
     documents: "Moje dokumenty",
   };
   const { s, actor, show } = useFleet(),
@@ -637,28 +637,7 @@ export function DriverWorkspace() {
           <FuelTable rows={s.fuels} />
         </Panel>
       )}
-      {tab === "requests" && (
-        <Panel title="Moje požadavky">
-          {s.trips
-            .filter((t) => t.endAt && t.endKm === null)
-            .map((t) => (
-              <div className="list-item" key={t.id}>
-                <div>
-                  <strong>Doplnění koncového tachometru</strong>
-                  <small>{date(t.startAt)}</small>
-                </div>
-                <Link className="btn" to={`/trips/${t.id}`}>
-                  Doplnit údaje
-                </Link>
-              </div>
-            ))}
-          <FaultTable rows={s.faults} />
-          <Link className="btn" to="/my/documents">
-            <FileText size={17} />
-            Moje dokumenty
-          </Link>
-        </Panel>
-      )}
+      {tab === "requests" && <DriverTasks />}
       {tab === "documents" && (
         <Panel title="Moje dokumenty">
           <DocumentList ownerType="driver" ownerId={d.id} />

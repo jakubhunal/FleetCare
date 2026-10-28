@@ -553,7 +553,7 @@ export function FaultPage() {
   return (
     <>
       <Back to={actor.role === "Řidič" ? "/my/requests" : "/faults"}>
-        Závady
+        {actor.role === "Řidič" ? "Moje úkoly" : "Závady"}
       </Back>
       <PageHead
         title={f.description}

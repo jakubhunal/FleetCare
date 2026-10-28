@@ -271,7 +271,9 @@ export function scopedWorkspace(s: Workspace, actor: Actor): Workspace {
     statements: [],
     transactions: [],
     templates: [],
-    services: [],
+    services: s.services.filter((service) =>
+      faults.some((f) => ids.has(f.vehicleId) && f.serviceId === service.id),
+    ),
     cards: [],
     notifications: [],
     events: [],
