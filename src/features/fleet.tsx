@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router";
 import {
   Truck,
   UserPlus,
-  Plus,
   Upload,
   Pencil,
   Pause,
@@ -24,6 +23,7 @@ import {
   Tabs,
 } from "../components/ui";
 import { useEditors } from "./editors";
+import { AddVehicleButton } from "./vehicle-intake";
 import { DocumentList, useUpload } from "./documents";
 import {
   DRef,
@@ -38,9 +38,7 @@ import { activeAssignment, driverState, odometer } from "../domain/rules";
 import { date, localTime, number, toUtc, today } from "../lib/format";
 import type { Vehicle } from "../domain/models";
 export function VehiclesPage() {
-  const { s } = useFleet(),
-    edit = useEditors(),
-    upload = useUpload();
+  const { s } = useFleet();
   const intake = s.documents.filter(
     (d) => d.ownerType === "intake" && !d.deletedAt,
   );
@@ -49,18 +47,7 @@ export function VehiclesPage() {
       <PageHead
         title="Vozidla"
         subtitle="Váš vozový park, jeho dostupnost a nejbližší povinnosti."
-        actions={
-          <>
-            <Button onClick={() => upload("intake", "new", undefined, "STK")}>
-              <Upload size={17} />
-              Nahrát STK
-            </Button>
-            <Button primary onClick={() => edit("vehicles")}>
-              <Plus size={18} />
-              Přidat vozidlo
-            </Button>
-          </>
-        }
+        actions={<AddVehicleButton />}
       />
       <Panel>
         <VehicleTable rows={s.vehicles} />

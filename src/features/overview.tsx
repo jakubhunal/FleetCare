@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router";
 import {
   Truck,
   Plus,
-  Upload,
   UserPlus,
   Wrench,
   Receipt,
@@ -22,7 +21,8 @@ import {
   Panel,
 } from "../components/ui";
 import { useEditors } from "./editors";
-import { DocumentList, useUpload } from "./documents";
+import { DocumentList } from "./documents";
+import { useAddVehicle } from "./vehicle-intake";
 import { FaultTable, FuelTable, OrderTable, TripsTable } from "./tables";
 import { Kpi } from "./reports";
 import { FuelIntakeDialog } from "./fuel-intake";
@@ -36,7 +36,7 @@ import { date, number, today } from "../lib/format";
 export function Dashboard() {
   const { s, actor } = useFleet(),
     edit = useEditors(),
-    upload = useUpload();
+    addVehicle = useAddVehicle();
   const due = deadlines(s).filter((d) => d.state !== "Splněno");
   const now = today();
   const near = due.filter(
@@ -189,7 +189,7 @@ export function Dashboard() {
               }
               action={
                 !s.vehicles.length && (
-                  <Button primary onClick={() => edit("vehicles")}>
+                  <Button primary onClick={addVehicle} aria-haspopup="dialog">
                     <Plus size={17} />
                     Přidat první vozidlo
                   </Button>
@@ -236,12 +236,7 @@ export function Dashboard() {
           {
             label: "Přidat vozidlo",
             icon: Truck,
-            action: () => edit("vehicles"),
-          },
-          {
-            label: "Nahrát STK",
-            icon: Upload,
-            action: () => upload("intake", "new", undefined, "STK"),
+            action: addVehicle,
           },
           {
             label: "Přidat řidiče",
