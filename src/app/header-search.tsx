@@ -34,6 +34,7 @@ export function HeaderSearch() {
       }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
+          event.preventDefault();
           input.current?.focus();
           setOpen(false);
         }
