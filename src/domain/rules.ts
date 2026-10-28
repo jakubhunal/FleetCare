@@ -237,7 +237,7 @@ export function scopedWorkspace(s: Workspace, actor: Actor): Workspace {
     .map((o) => ({ ...o, priceMinor: null, internalNote: "" }));
   const fuels = s.fuels.filter((f) => f.driverId === actor.driverId);
   const faults = s.faults
-    .filter((f) => f.driverId === actor.driverId)
+    .filter((f) => f.driverId === actor.driverId || ids.has(f.vehicleId))
     .map((f) => ({
       ...f,
       estimateMinor: null,
@@ -248,9 +248,13 @@ export function scopedWorkspace(s: Workspace, actor: Actor): Workspace {
     (d) =>
       !d.deletedAt &&
       ((d.ownerType === "driver" && d.ownerId === actor.driverId) ||
-        (d.ownerType === "order" && orders.some((o) => o.id === d.ownerId)) ||
+        (d.ownerType === "order" &&
+          d.type === "Dodací list" &&
+          orders.some((o) => o.id === d.ownerId)) ||
         (d.ownerType === "fuel" && fuels.some((f) => f.id === d.ownerId)) ||
-        (d.ownerType === "vehicle" && ids.has(d.ownerId))),
+        (d.ownerType === "vehicle" &&
+          ["STK", "Pojištění"].includes(d.type) &&
+          ids.has(d.ownerId))),
   );
   return {
     ...s,

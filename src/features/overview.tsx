@@ -552,12 +552,6 @@ export function DriverWorkspace() {
               <Receipt size={26} />
               Zadat tankování
             </Button>
-            <Button
-              disabled={!v}
-              onClick={() => show(<FuelIntakeDialog vehicleId={v?.id} />)}
-            >
-              Nahrát účtenku
-            </Button>
           </div>
           {s.trips
             .filter((t) => t.endAt && t.endKm === null)
@@ -612,6 +606,12 @@ export function DriverWorkspace() {
       {tab === "fuel" && (
         <Panel title="Moje tankování">
           <div className="section-actions">
+            <Button
+              disabled={!v}
+              onClick={() => show(<FuelIntakeDialog vehicleId={v?.id} />)}
+            >
+              Nahrát účtenku
+            </Button>
             <Button
               primary
               disabled={!v}

@@ -45,6 +45,7 @@ export function VehicleTable({ rows }: { rows: Vehicle[] }) {
   const { s } = useFleet();
   return (
     <DataTable
+      prefix="vehicles."
       rows={rows}
       path={(v) => `/vehicles/${v.id}`}
       search={(v) =>
@@ -159,6 +160,7 @@ export function DriverTable({ rows }: { rows: Driver[] }) {
   const { s } = useFleet();
   return (
     <DataTable
+      prefix="drivers."
       rows={rows}
       path={(d) => `/drivers/${d.id}`}
       search={(d) => d.name + " " + d.email + " " + d.phone}
@@ -246,6 +248,7 @@ export function OrderTable({ rows }: { rows: Order[] }) {
   const { s, actor } = useFleet();
   return (
     <DataTable
+      prefix="orders."
       rows={rows}
       path={(o) => `/orders/${o.id}`}
       search={(o) =>
@@ -350,6 +353,7 @@ export function TripsTable({ rows }: { rows: Trip[] }) {
   const { s } = useFleet();
   return (
     <DataTable
+      prefix="trips."
       rows={rows}
       path={(t) => `/trips/${t.id}`}
       search={(t) =>
@@ -477,6 +481,7 @@ export function FaultTable({ rows }: { rows: Fault[] }) {
   const { s } = useFleet();
   return (
     <DataTable
+      prefix="faults."
       rows={rows}
       path={(f) => `/faults/${f.id}`}
       search={(f) =>
@@ -555,6 +560,7 @@ export function FaultTable({ rows }: { rows: Fault[] }) {
 export function FuelTable({ rows }: { rows: Records["fuels"][] }) {
   return (
     <DataTable
+      prefix="fuels."
       rows={rows}
       path={(f) => `/fuels/${f.id}`}
       search={(f) => f.station + " " + f.at + " " + f.fuel}

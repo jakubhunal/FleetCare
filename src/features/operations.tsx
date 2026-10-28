@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { Download, Pencil, Send, Square } from "lucide-react";
 import { useFleet } from "../app/context";
@@ -165,11 +165,16 @@ export function OrderPage() {
 export function AssignmentPage() {
   const { id } = useParams();
   const { s, actor, run } = useFleet();
-  const [vehicleId, setVehicle] = useState(""),
-    [driverId, setDriver] = useState(""),
+  const o = s.orders.find((o) => o.id === id);
+  const [vehicleId, setVehicle] = useState(o?.vehicleId || ""),
+    [driverId, setDriver] = useState(o?.driverId || ""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const o = s.orders.find((o) => o.id === id);
+  useEffect(() => {
+    setVehicle(o?.vehicleId || "");
+    setDriver(o?.driverId || "");
+    setError("");
+  }, [o?.id]);
   if (!o || actor.role === "Řidič")
     return <Empty title="Přiřazení není dostupné" />;
   const v = s.vehicles.find((v) => v.id === vehicleId) || null;

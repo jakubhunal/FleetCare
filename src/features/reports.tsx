@@ -233,6 +233,7 @@ export function ReportsPage({ costsOnly = false }: { costsOnly?: boolean }) {
       </div>
       <Panel title="Podklady podle vozidel">
         <DataTable
+          prefix="report."
           rows={result.rows.map((r) => ({ ...r, id: r.vehicleId }))}
           search={(r) => r.spz}
           path={(r) => `/vehicles/${r.vehicleId}`}

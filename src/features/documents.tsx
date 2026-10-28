@@ -215,6 +215,7 @@ export function DocumentList({
         </label>
       </div>
       <DataTable
+        prefix={`documents-${ownerType}-${ownerId}.`}
         rows={docs}
         path={(d) => `/documents/${d.id}`}
         search={(d) => d.name + " " + d.type}
