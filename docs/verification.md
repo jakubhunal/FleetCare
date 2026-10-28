@@ -35,3 +35,17 @@ Ukázková větev byla vytvořena až z pushnutého `fe-clean-v1`. Její test ov
 
 Doplněny testy české půlnoci a jízdy přes hranici měsíců. Výnos zakázky používá jedinou poslední objednanou zastávku pro časové zařazení; nejde o doložený účetní okamžik doručení. Demo přidává jeden samostatný test seedu (35 celkem).
 
+## GitHub Pages — skutečné veřejné nasazení
+
+GitHub Pages jsou nastavené na GitHub Actions, nasazovací prostředí povoluje `codex/demo-review`. Ověřeno na https://jakubhunal.github.io/FleetCare/ dne 28. 10. 2026:
+
+- Čistý commit `4e853a3` prošel [Frontend checks](https://github.com/jakubhunal/FleetCare/actions/runs/40709315128). Lokálně také typecheck, lint, všech 34 testů, build a regenerace kontraktů bez rozdílu.
+- [Sync verified main to demo](https://github.com/jakubhunal/FleetCare/actions/runs/40709408751) úspěšně provedl merge a push `99e6c69` do demo větve a explicitně vyvolal Pages workflow. Rozdíl proti main stále tvořilo jen pět souborů demo konfigurace, seedu, testu a dokumentace.
+- [Build a skutečné Pages nasazení](https://github.com/jakubhunal/FleetCare/actions/runs/40709433305) prošly, včetně 35 demo testů. `/FleetCare/version.json` vrátil HTTP 200 a přesný commit `99e6c69a99c6fc79341bcd9e973636e3e7afd26b`, shodný s demo HEAD a odkazem v patičce. Jde o zaznamenaný ověřovací bod; další push automaticky publikuje novější commit.
+- Desktop 1440 px a telefon 390 px: načtení naplněného přehledu, hledání `1DE 1004`, detail Škoda Octavia a reload jeho přímé hash URL. Reload nevrátil 404 ani neztratil detail.
+- Mobil: výběr Karla Ukázkového, navigace přes menu, zahájení samostatné testovací jízdy, perzistence po reloadu včetně zvoleného kontextu, ukončení s tachometrem 100 510 − 100 500 = 10 km. Výsledek se promítl do reportu. Tyto QA úpravy existují jen v testovacím prohlížeči, nikoli v Git seedu.
+- Klávesnicový odkaz Přejít k obsahu zaměřil `main`, hash trasy zůstal zachován. Mobilní dokument měl clientWidth = scrollWidth = 375 px uvnitř 390px viewportu se svislým posuvníkem.
+- Z veřejného dema byly skutečně staženy PDF (21 407 B, `%PDF-1.3`) i XLSX (7 191 B). XLSX byl znovu načten přes ExcelJS, list FleetCare měl 8 řádků a 8 sloupců. Ověřeno také načtení odložených exportních modulů z `/FleetCare/assets/`.
+- Konzole těchto veřejných scénářů neobsahovala chyby ani varování. Snímky desktopu a mobilu jsou lokálně v ignorované složce `test-results/pages/`.
+
+Publikování aktualizuje zdroj aplikace; nepřepisuje lokální IndexedDB návštěvníků a nepřipojuje žádnou DB nebo externí integraci.
