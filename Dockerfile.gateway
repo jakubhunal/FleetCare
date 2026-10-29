@@ -1,0 +1,6 @@
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787
+COPY server/sheets-gateway.mjs ./server/sheets-gateway.mjs
+EXPOSE 8787
+CMD ["node", "server/sheets-gateway.mjs"]

@@ -11,7 +11,8 @@
     "typecheck": "tsc -b",
     "lint": "eslint src tests",
     "test": "vitest run",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "gateway:sheets": "node server/sheets-gateway.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.90.5",

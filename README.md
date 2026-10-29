@@ -48,6 +48,12 @@ VITE_API_BASE_URL=https://vase-gateway.example.invalid/v1
 
 Restartujte Vite. Neplatná/chybějící služba ukáže chybu; neaktivuje lokální fallback. Nikdy nevkládejte privilegované klíče či Make webhook do VITE proměnných. Smlouva HTTP klienta i serverových callbacků je v docs/api-contract.md a docs/openapi.json.
 
+## Google Sheets na VPS
+
+Pro napojení dodané školní tabulky použijte serverovou bránu `npm run gateway:sheets`. Mapování listů, podporované zápisy, service account a proměnné pro VPS jsou v [docs/sheets-vps.md](docs/sheets-vps.md). Současná tabulka zatím nepokrývá všechny části aplikace ani souborové přílohy.
+
+Docker image a celý postup nasazení na VPS jsou popsané v [docs/docker-vps.md](docs/docker-vps.md).
+
 ## Ukázková větev
 
 Technicky ověřený čistý bod: `fe-clean-v1`. Větev `codex/demo-review` vzniká až z tohoto bodu a přidává izolovaný idempotentní seed. Spuštění:

@@ -1,0 +1,52 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      GOOGLE_SHEET_ID: ${GOOGLE_SHEET_ID:?Set GOOGLE_SHEET_ID in .env.docker}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-service-account.json
+    secrets:
+      - source: google_service_account
+        target: google-service-account.json
+    expose:
+      - "8787"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_DATA_ADAPTER: http
+        VITE_API_BASE_URL: /api/v1
+    depends_on:
+      - gateway
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2
+    environment:
+      FLEETCARE_DOMAIN: ${FLEETCARE_DOMAIN:?Set FLEETCARE_DOMAIN in .env.docker}
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+secrets:
+  google_service_account:
+    file: ${GOOGLE_SERVICE_ACCOUNT_FILE:?Set GOOGLE_SERVICE_ACCOUNT_FILE in .env.docker}
+
+volumes:
+  caddy_data:
+  caddy_config:
