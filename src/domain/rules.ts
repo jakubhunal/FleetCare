@@ -159,22 +159,6 @@ export function suitability(
     if (d.medicalState === "Nezpůsobilý")
       bad.push("Řidič není zdravotně způsobilý");
   }
-  if (w.from && w.to) {
-    for (const other of s.orders) {
-      if (
-        other.id === o.id ||
-        ["Zrušená", "Uzavřená", "Dokončená"].includes(other.state)
-      )
-        continue;
-      const b = orderWindow(other);
-      if ((v && other.vehicleId === v.id) || (d && other.driverId === d.id)) {
-        if (!b.from || !b.to)
-          missing.push("čas jiné přiřazené zakázky " + other.number);
-        else if (overlap(w.from, w.to, b.from, b.to))
-          bad.push("Překryv se zakázkou " + other.number);
-      }
-    }
-  }
   return {
     state: bad.length
       ? "Nevhodné"
@@ -183,16 +167,6 @@ export function suitability(
         : "Vhodné",
     reasons: [...bad, ...missing.map((x) => "Chybí " + x)],
   };
-}
-export function orderConflict(s: Workspace, o: Order) {
-  if (!o.vehicleId && !o.driverId) return null;
-  const r = suitability(
-    s,
-    o,
-    s.vehicles.find((v) => v.id === o.vehicleId) || null,
-    s.drivers.find((d) => d.id === o.driverId) || null,
-  );
-  return r.state === "Vhodné" ? null : r.reasons.join(" · ");
 }
 export function validateTrip(s: Workspace, t: Trip) {
   if (!t.orderId && !t.purpose.trim())

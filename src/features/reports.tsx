@@ -213,34 +213,37 @@ export function ReportsPage({ costsOnly = false }: { costsOnly?: boolean }) {
             />
           )}
         </Panel>
-        <Panel title="Úplnost a metodika">
-          {!!result.boundaryTrips && (
-            <Notice>
-              {result.boundaryTrips} jízd překračuje hranici období. Jejich km
-              bez rozděleného podkladu nejsou zahrnuty do měsíčního jmenovatele.
-            </Notice>
-          )}
-          <p>
-            Časové zařazení zakázek používá poslední objednanou zastávku. Stav
-            dokončení a plánované výnosy se vyhodnocují odděleně.
-          </p>
-          <p>
-            Období {date(scope.from)} — {date(scope.to)}. Měny se vyhodnocují
-            odděleně.
-          </p>
-          <p>
-            Náklady obsahují částky včetně DPH. Cena zakázky je bez DPH. Odhady
-            oprav se nezapočítávají.
-          </p>
-          <p>
-            Spotřeba vychází pouze z doloženého úseku mezi tankováními do plna v
-            období, včetně dílčích tankování.
-          </p>
-          <p>
-            Využití vozidel: <strong>Nelze vyhodnotit</strong> — není definován
-            dostupný pracovní čas.
-          </p>
-        </Panel>
+        {!costsOnly && (
+          <Panel title="Úplnost a metodika">
+            {!!result.boundaryTrips && (
+              <Notice>
+                {result.boundaryTrips} jízd překračuje hranici období. Jejich km
+                bez rozděleného podkladu nejsou zahrnuty do měsíčního
+                jmenovatele.
+              </Notice>
+            )}
+            <p>
+              Časové zařazení zakázek používá poslední objednanou zastávku. Stav
+              dokončení a plánované výnosy se vyhodnocují odděleně.
+            </p>
+            <p>
+              Období {date(scope.from)} — {date(scope.to)}. Měny se vyhodnocují
+              odděleně.
+            </p>
+            <p>
+              Náklady obsahují částky včetně DPH. Cena zakázky je bez DPH.
+              Odhady oprav se nezapočítávají.
+            </p>
+            <p>
+              Spotřeba vychází pouze z doloženého úseku mezi tankováními do plna
+              v období, včetně dílčích tankování.
+            </p>
+            <p>
+              Využití vozidel: <strong>Nelze vyhodnotit</strong> — není
+              definován dostupný pracovní čas.
+            </p>
+          </Panel>
+        )}
       </div>
       <Panel title="Podklady podle vozidel">
         <DataTable

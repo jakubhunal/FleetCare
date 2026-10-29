@@ -26,12 +26,7 @@ import { DriverTasks } from "./driver-tasks";
 import { FaultTable, FuelTable, OrderTable, TripsTable } from "./tables";
 import { Kpi } from "./reports";
 import { FuelIntakeDialog } from "./fuel-intake";
-import {
-  availableVehicles,
-  deadlines,
-  odometer,
-  orderConflict,
-} from "../domain/rules";
+import { availableVehicles, deadlines, odometer } from "../domain/rules";
 import { date, number, today } from "../lib/format";
 export function Dashboard() {
   const { s, actor } = useFleet(),
@@ -51,10 +46,10 @@ export function Dashboard() {
   );
   const tasks = [
     ...s.orders
-      .filter((o) => !o.vehicleId || !o.driverId || orderConflict(s, o))
+      .filter((o) => !o.vehicleId || !o.driverId)
       .map((o) => ({
         id: o.id,
-        title: (o.vehicleId ? "Vyřešit konflikt · " : "Přiřadit · ") + o.number,
+        title: "Přiřadit · " + o.number,
         meta: o.customer,
         term: o.stops[0]?.from || null,
         state: o.state,
@@ -424,23 +419,6 @@ export function DeadlinesPage() {
                 label: "Stav",
                 sort: (d) => d.state,
                 render: (d) => <Badge value={d.state} />,
-              },
-              {
-                key: "action",
-                label: "Akce",
-                render: (d) =>
-                  !d.derived && (
-                    <Button
-                      onClick={() =>
-                        edit(
-                          "deadlines",
-                          s.deadlines.find((x) => x.id === d.id),
-                        )
-                      }
-                    >
-                      Upravit termín
-                    </Button>
-                  ),
               },
             ]}
           />

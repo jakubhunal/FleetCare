@@ -30,3 +30,19 @@
 - Poslední oprava: české kalendářní datum pro období; jízdy přes měsíční hranici se bez přesného rozdělení km nezahrnují do jmenovatele. Zakázka je časově zařazená jedinou poslední objednanou zastávkou.
 - Další krok zadavatele: připomínky k demo větvi podle docs/review-workflow.md. Vzhled není označen za schválený bez jeho vyjádření.
 - Další krok kolegů: DB/gateway, ověřená identita a oprávnění, soukromé soubory, Make/OCR/e-maily a integrační akceptace podle docs/backend-handover.md. Žádná ostrá služba není předstíraná.
+
+## 2026-10-29 — Odstranění přebytečných prvků FE
+
+- Detail vozidla (`fleet.tsx`): odstraněna záložka Pojištění a termíny, upload STK v hlavičce, přiřazení šablony a záznam provedení servisu, tlačítka hlášení závady a tankování. Dokumenty, výběr šablony a individuální plán zachovány.
+- Detail řidiče: odstraněna záložka oprávnění a údaje zdravotní způsobilosti z přehledu. `DriverOperationsTable` v `tables.tsx` sjednocuje zakázky a běžné jízdy bez zakázky, s chipem typu a jedním filtrem; jízdy navázané na zakázku zůstávají v jejím detailu.
+- Zakázky (`operations.tsx`, `overview.tsx`, `tables.tsx`, `rules.ts`): odstraněna signalizace konfliktů i výpočet časových překryvů mezi zakázkami. Sdílená kontrola vhodnosti kandidátů (kapacity, oprávnění, stav vozidla a servisní dostupnost) zachována pro přiřazování. Editor trasy (`editors.tsx`) má jen začátek a cíl, bez přidávání/odebírání zastávek; při uložení starší vícestopé zakázky zachová první a poslední bod. Importované historické trasy a datový model zůstávají kompatibilní.
+- Detail závady: odstraněno obnovení příjemce i související stav a handler. Karta komunikace zůstává.
+- Náklady (`costs.tsx`, `reports.tsx`): odstraněn upload účtenky v hlavičce, metodika pouze v nákladovém přehledu, spuštění párování CCS a karta původního souboru. Originální CCS dokument je dostupný odkazem na jeho existující detail. Odstraněno vytváření korekcí, příslušná pole a odkaz na původní výdaj; tabulka dokumentů se u výdaje bez dokumentů nevykresluje. Dostupná je úprava výdaje; odstraněn zákaz editace v lokálním command handleru, kontrola verzí zůstává.
+- Termíny (`overview.tsx`): odstraněn sloupec Akce; nový detail termínu se v této iteraci nezavádí.
+- Zachováno: dokumentové úložiště, datové modely, HTTP klient, historické korekce a API příkazy párování/šablon/komunikace kvůli kompatibilitě. Nastavení, kontakty, rychlé akce, styly, historie, patička a ostatní sdílená místa beze změn. Metodika v samostatných Reportech a upload účtenek v řidičově pracovním prostoru zůstávají.
+- Ověření: lint, typecheck, produkční build a 38 testů; Chromium desktop 1440 px a mobil 390 px, odstranění prvků, jedna tabulka řidiče, dokumenty vozidla, persistence editovaného výdaje. Build nadále hlásí existující upozornění na velké chunky.
+- Omezení: živý HTTP backend, produkční data a Pages nebyly ověřovány ani nasazovány. Další iterace musí rozhodnout o kartě komunikace a doplnit detail termínu. Větev `codex/ux-remove-extra-controls` je určena k revizi a začlenění do main.
+
+### Následná funkční kontrola na žádost uživatele
+
+Znovu ověřen commit `c25daef`: typecheck, lint, 38 testů a produkční build prošly. Dotčené obrazovky prošly kontrolami Chromium desktop/mobil. Navíc ověřena persistence úpravy servisního plánu, skutečný upload a stažení pojištění a import/otevření/stažení originálního CCS PDF. Výsledek a omezení jsou v `docs/verification.md`; nebyla nutná oprava aplikačního kódu. Záznam ověření je uložen na stejné pracovní větvi.

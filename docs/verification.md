@@ -49,3 +49,18 @@ GitHub Pages jsou nastavené na GitHub Actions, nasazovací prostředí povoluje
 - Konzole těchto veřejných scénářů neobsahovala chyby ani varování. Snímky desktopu a mobilu jsou lokálně v ignorované složce `test-results/pages/`.
 
 Publikování aktualizuje zdroj aplikace; nepřepisuje lokální IndexedDB návštěvníků a nepřipojuje žádnou DB nebo externí integraci.
+
+## 29. 10. 2026 — Opakovaná kontrola po odstranění prvků UI
+
+Ověřen kód `c25daef` na větvi `codex/ux-remove-extra-controls` v cloudovém prostředí, Node.js 24.19.0. Typecheck, lint, všech 38 testů v devíti souborech a produkční build prošly. Přetrvává upozornění Vite na velké chunky, build neselhává.
+
+Chromium s izolovanými fiktivními daty, desktop 1440 px a mobil 390 px:
+
+- Detaily vozidla (přehled, plán, závady, náklady), řidiče, zakázky, nákladové stránky, CCS, výdaj, termíny a detail závady se načetly; požadované odstraněné prvky se nezobrazují.
+- Řidičovy zakázky a běžné jízdy jsou v jediné tabulce a obě testovací položky jsou dostupné. Záložka Dokumenty a upload zůstávají dostupné.
+- Výdaj lze upravit bez korekčních polí; změna popisu přežila reload. Editor zakázky má dva body trasy bez tlačítek na přidání/odebrání a lze jej uložit.
+- Existující individuální servisní plán lze otevřít, změnit název úkonu a uložit; změna přežila reload.
+- Pojištění: skutečný upload syntetického PNG přes UI, zobrazení v dokumentech vozidla po reloadu, otevření náhledu a stažení originálu se shodnými bajty. První pokus kontroly selhal na příliš přesném selektoru odkazu (přístupný název obsahuje i typ dokumentu); po opravě testovacího selektoru prošel bez zásahu do aplikace.
+- CCS: skutečný import syntetického platného PDF přes UI, detail s jedinou tabulkou transakcí, otevření původního dokumentu z nového odkazu, iframe náhled a stažení originálu po reloadu se shodnými bajty. Bez běhových chyb v kontrolovaných dokumentových scénářích.
+
+Nenalezena chyba aplikace v těchto scénářích. Nejde o ověření všech kombinací vstupů ani ostrého HTTP backendu, OCR, e-mailů, Make či veřejného nasazení. Mobilní kontrola použila Chromium s rozměry telefonu, nikoli fyzické zařízení. Zůstává známé chování nového editoru: při uložení starší zakázky s více body trasy se zachová první a poslední bod (viz progress.md).

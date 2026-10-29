@@ -1,12 +1,7 @@
 import { Link } from "react-router";
 import { useFleet } from "../app/context";
 import { Badge, DataTable } from "../components/ui";
-import {
-  activeAssignment,
-  driverState,
-  odometer,
-  orderConflict,
-} from "../domain/rules";
+import { activeAssignment, driverState, odometer } from "../domain/rules";
 import type {
   Records,
   Vehicle,
@@ -245,7 +240,7 @@ export function DriverTable({ rows }: { rows: Driver[] }) {
   );
 }
 export function OrderTable({ rows }: { rows: Order[] }) {
-  const { s, actor } = useFleet();
+  const { actor } = useFleet();
   return (
     <DataTable
       prefix="orders."
@@ -329,9 +324,6 @@ export function OrderTable({ rows }: { rows: Order[] }) {
           render: (o) => (
             <>
               <Badge value={o.state} />
-              {actor.role !== "Řidič" && orderConflict(s, o) && (
-                <small className="field-error">Konflikt přiřazení</small>
-              )}
             </>
           ),
         },
@@ -637,6 +629,75 @@ export function FuelTable({ rows }: { rows: Records["fuels"][] }) {
           label: "CCS stav",
           sort: (f) => f.state,
           render: (f) => <Badge value={f.state} />,
+        },
+      ]}
+    />
+  );
+}
+
+export function DriverOperationsTable({ driverId }: { driverId: string }) {
+  const { s } = useFleet();
+  const rows = [
+    ...s.orders
+      .filter((o) => o.driverId === driverId)
+      .map((o) => ({
+        id: `order-${o.id}`,
+        type: "Zakázka",
+        title: o.number,
+        detail: o.customer,
+        at: o.stops[0]?.from || null,
+        state: o.state,
+        path: `/orders/${o.id}`,
+      })),
+    ...s.trips
+      .filter((t) => t.driverId === driverId && !t.orderId)
+      .map((t) => ({
+        id: `trip-${t.id}`,
+        type: "Jízda",
+        title: t.purpose,
+        detail: "",
+        at: t.startAt,
+        state: t.state,
+        path: `/trips/${t.id}`,
+      })),
+  ];
+  return (
+    <DataTable
+      rows={rows}
+      path={(r) => r.path}
+      search={(r) => `${r.title} ${r.detail} ${r.type}`}
+      filters={[
+        {
+          key: "type",
+          label: "Všechny typy",
+          options: optionPairs(["Zakázka", "Jízda"]),
+          value: (r) => r.type,
+        },
+      ]}
+      columns={[
+        { key: "type", label: "Typ", render: (r) => <Badge value={r.type} /> },
+        {
+          key: "title",
+          label: "Zakázka / jízda",
+          sort: (r) => r.title,
+          render: (r) => (
+            <>
+              <strong>{r.title}</strong>
+              <small>{r.detail}</small>
+            </>
+          ),
+        },
+        {
+          key: "at",
+          label: "Datum",
+          sort: (r) => r.at,
+          render: (r) => date(r.at, true),
+        },
+        {
+          key: "state",
+          label: "Stav",
+          sort: (r) => r.state,
+          render: (r) => <Badge value={r.state} />,
         },
       ]}
     />

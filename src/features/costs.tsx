@@ -20,10 +20,9 @@ import { DocumentList, useUpload } from "./documents";
 import { DRef, FuelTable, VRef } from "./tables";
 import { date, money, number } from "../lib/format";
 import { ReportsPage } from "./reports";
-import { FuelIntakeDialog } from "./fuel-intake";
 export function CostsPage() {
   const { tab = "fuel" } = useParams();
-  const { s, show } = useFleet(),
+  const { s } = useFleet(),
     edit = useEditors(),
     upload = useUpload();
   return (
@@ -34,9 +33,6 @@ export function CostsPage() {
         actions={
           tab === "fuel" ? (
             <>
-              <Button onClick={() => show(<FuelIntakeDialog />)}>
-                Nahrát účtenku
-              </Button>
               <Button primary onClick={() => edit("fuels")}>
                 <Plus size={17} />
                 Zadat tankování
@@ -311,7 +307,7 @@ export function FuelPage() {
 }
 export function StatementPage() {
   const { id } = useParams();
-  const { s, run, toast } = useFleet();
+  const { s } = useFleet();
   const x = s.statements.find((x) => x.id === id);
   if (!x) return <Empty title="Výpis není dostupný" />;
   return (
@@ -320,27 +316,17 @@ export function StatementPage() {
       <PageHead
         title={x.name}
         subtitle={"Přijato " + date(x.receivedAt, true)}
-        actions={
-          <Button
-            onClick={async () => {
-              try {
-                await run({ type: "ccs.reconcile", statementId: x.id });
-              } catch (e) {
-                toast(e instanceof Error ? e.message : "Párování selhalo.");
-              }
-            }}
-          >
-            Vyhodnotit párování
-          </Button>
-        }
+        actions={s.documents
+          .filter(
+            (d) =>
+              d.ownerType === "statement" && d.ownerId === x.id && !d.deletedAt,
+          )
+          .map((d) => (
+            <Link className="btn" key={d.id} to={`/documents/${d.id}`}>
+              {d.name}
+            </Link>
+          ))}
       />
-      <Panel title="Původní soubor a stav">
-        <p>
-          <Badge value={x.processing} />
-        </p>
-        {x.error && <Notice>{x.error}</Notice>}
-        <DocumentList ownerType="statement" ownerId={x.id} add={false} />
-      </Panel>
       <Panel title="Transakce výpisu">
         <TransactionTable statementId={x.id} />
       </Panel>
@@ -554,18 +540,7 @@ export function ExpensePage() {
         title={e.description}
         subtitle={`${e.category} · ${e.kind}`}
         actions={
-          <Button
-            onClick={() =>
-              edit("expenses", undefined, {
-                vehicleId: e.vehicleId,
-                currency: e.currency,
-                kind: "Korekce",
-                originalId: e.id,
-              })
-            }
-          >
-            Zapsat navázanou korekci
-          </Button>
+          <Button onClick={() => edit("expenses", e)}>Upravit výdaj</Button>
         }
       />
       <Panel>
@@ -576,21 +551,17 @@ export function ExpensePage() {
             ["Částka vč. DPH", money(e.amountMinor, e.currency)],
             ["DPH", number(e.vat, "%")],
             ["Úhrada", date(e.paidAt)],
-            [
-              "Původní výdaj",
-              e.originalId ? (
-                <Link to={`/expenses/${e.originalId}`}>
-                  Otevřít původní záznam
-                </Link>
-              ) : null,
-            ],
           ]}
         />
-        <DocumentList
-          ownerType="expense"
-          ownerId={e.id}
-          vehicleId={e.vehicleId}
-        />
+        {s.documents.some(
+          (d) => d.ownerType === "expense" && d.ownerId === e.id,
+        ) && (
+          <DocumentList
+            ownerType="expense"
+            ownerId={e.id}
+            vehicleId={e.vehicleId}
+          />
+        )}
       </Panel>
     </>
   );

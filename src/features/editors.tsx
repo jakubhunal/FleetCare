@@ -232,23 +232,11 @@ export function editorFields(
           ]),
         }),
         f("date", "Datum výdaje", "date", true, { initial: today() }),
-        f(
-          "amountMinor",
-          "Částka včetně DPH (korekce může být záporná)",
-          "money",
-          true,
-        ),
+        f("amountMinor", "Částka včetně DPH", "money", true),
         currency,
         f("vat", "DPH (%)", "number"),
         f("description", "Popis / důvod", "textarea", true),
         f("paidAt", "Datum úhrady", "date"),
-        f("kind", "Typ záznamu", "select", true, {
-          initial: "Výdaj",
-          options: options(["Výdaj", "Storno", "Korekce"]),
-        }),
-        f("originalId", "Původní výdaj", "select", false, {
-          options: s.expenses.map((e) => [e.id, e.description]),
-        }),
       ];
     case "deadlines":
       return [
@@ -499,7 +487,7 @@ function Stops({
                   )
                 }
               >
-                {["Nakládka", "Vykládka", "Zastávka"].map((x) => (
+                {["Nakládka", "Vykládka"].map((x) => (
                   <option key={x}>{x}</option>
                 ))}
               </select>
@@ -567,29 +555,8 @@ function Stops({
               />
             </label>
           </div>
-          <Button onClick={() => onChange(value.filter((_, n) => n !== i))}>
-            Odebrat zastávku
-          </Button>
         </div>
       ))}
-      <Button
-        onClick={() =>
-          onChange([
-            ...value,
-            {
-              id: crypto.randomUUID(),
-              type: "Zastávka",
-              place: "",
-              from: null,
-              to: null,
-              contact: "",
-              instructions: "",
-            },
-          ])
-        }
-      >
-        Přidat zastávku
-      </Button>
     </div>
   );
 }
@@ -638,8 +605,23 @@ export function EntityEditor({
       ? record.items
       : []) as Records["plans"]["items"],
   );
-  const [stops, setStops] = useState(
-    (record && "stops" in record ? record.stops : []) as Order["stops"],
+  const [stops, setStops] = useState<Order["stops"]>(
+    (() => {
+      const existing = record && "stops" in record ? record.stops : [];
+      return [
+        existing[0],
+        existing.length > 1 ? existing.at(-1) : undefined,
+      ].map((stop, i) => ({
+        id: crypto.randomUUID(),
+        place: "",
+        from: null,
+        to: null,
+        contact: "",
+        instructions: "",
+        ...stop,
+        type: i === 0 ? ("Nakládka" as const) : ("Vykládka" as const),
+      }));
+    })(),
   );
   const [bindings, setBindings] = useState(
     record && "bindings" in record ? record.bindings : [],
@@ -728,6 +710,11 @@ export function EntityEditor({
             if (collection === "templates" || collection === "plans")
               values.items = items;
             if (collection === "orders") values.stops = stops;
+            if (collection === "expenses") {
+              values.kind = record && "kind" in record ? record.kind : "Výdaj";
+              values.originalId =
+                record && "originalId" in record ? record.originalId : null;
+            }
             if (collection === "cards") values.bindings = bindings;
             if (collection === "faults" && !record) {
               values.state = "Nahlášena";

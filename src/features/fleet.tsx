@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import {
-  Truck,
-  UserPlus,
-  Upload,
-  Pencil,
-  Pause,
-  Play,
-} from "lucide-react";
+import { Truck, UserPlus, Pencil, Pause, Play } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import {
   Back,
@@ -24,10 +17,11 @@ import {
 } from "../components/ui";
 import { useEditors } from "./editors";
 import { AddVehicleButton } from "./vehicle-intake";
-import { DocumentList, useUpload } from "./documents";
+import { DocumentList } from "./documents";
 import {
   DRef,
   DriverTable,
+  DriverOperationsTable,
   FaultTable,
   FuelTable,
   OrderTable,
@@ -35,7 +29,7 @@ import {
   VehicleTable,
 } from "./tables";
 import { activeAssignment, driverState, odometer } from "../domain/rules";
-import { date, localTime, number, toUtc, today } from "../lib/format";
+import { date, localTime, number, toUtc } from "../lib/format";
 import type { Vehicle } from "../domain/models";
 export function VehiclesPage() {
   const { s } = useFleet();
@@ -89,7 +83,6 @@ export function DriversPage() {
 const vehicleTabs: [string, string][] = [
   ["overview", "Přehled"],
   ["documents", "Dokumenty"],
-  ["terms", "Pojištění a termíny"],
   ["plan", "Servisní plán"],
   ["faults", "Závady a servis"],
   ["orders", "Zakázky"],
@@ -100,8 +93,7 @@ const vehicleTabs: [string, string][] = [
 export function VehiclePage() {
   const { id, tab = "overview" } = useParams();
   const { s, actor, show } = useFleet(),
-    edit = useEditors(),
-    upload = useUpload();
+    edit = useEditors();
   const v = s.vehicles.find((v) => v.id === id);
   if (!v)
     return (
@@ -123,13 +115,6 @@ export function VehiclePage() {
               <Button onClick={() => edit("vehicles", v)}>
                 <Pencil size={17} />
                 Upravit vozidlo
-              </Button>
-              <Button
-                primary
-                onClick={() => upload("vehicle", v.id, v.id, "STK")}
-              >
-                <Upload size={17} />
-                Nahrát STK
               </Button>
             </>
           )
@@ -185,54 +170,9 @@ export function VehiclePage() {
           {tab === "documents" && (
             <DocumentList ownerType="vehicle" ownerId={v.id} vehicleId={v.id} />
           )}
-          {tab === "terms" && (
-            <>
-              <DataGrid items={[["Platnost STK", date(v.stkUntil)]]} />
-              <div className="section-actions">
-                <Button onClick={() => edit("vehicles", v)}>
-                  Upravit provozní údaj STK
-                </Button>
-                <Button
-                  primary
-                  onClick={() =>
-                    edit("deadlines", undefined, {
-                      vehicleId: v.id,
-                      type: "Pojištění",
-                    })
-                  }
-                >
-                  Přidat pojištění / termín
-                </Button>
-              </div>
-              {s.deadlines
-                .filter((d) => d.vehicleId === v.id)
-                .map((d) => (
-                  <div className="list-item" key={d.id}>
-                    <div>
-                      <strong>{d.title}</strong>
-                      <small>
-                        {date(d.date)} · {number(d.km, "km")} · {d.responsible}
-                      </small>
-                    </div>
-                    <Badge value={d.state} />
-                    <Button onClick={() => edit("deadlines", d)}>
-                      Upravit
-                    </Button>
-                  </div>
-                ))}
-            </>
-          )}
           {tab === "plan" && <ServicePlan vehicle={v} />}
           {tab === "faults" && (
             <>
-              <div className="section-actions">
-                <Button
-                  primary
-                  onClick={() => edit("faults", undefined, { vehicleId: v.id })}
-                >
-                  Nahlásit závadu
-                </Button>
-              </div>
               <FaultTable rows={s.faults.filter((f) => f.vehicleId === v.id)} />
             </>
           )}
@@ -264,14 +204,6 @@ export function VehiclePage() {
           )}
           {tab === "costs" && (
             <>
-              <div className="section-actions">
-                <Button
-                  primary
-                  onClick={() => edit("fuels", undefined, { vehicleId: v.id })}
-                >
-                  Zadat tankování
-                </Button>
-              </div>
               <FuelTable rows={s.fuels.filter((f) => f.vehicleId === v.id)} />
               <Notice>
                 Ostatní výdaje a souhrn nákladů najdete v sekci{" "}
@@ -418,24 +350,10 @@ function Assignments({
   );
 }
 function ServicePlan({ vehicle }: { vehicle: Vehicle }) {
-  const { s, run, show, close } = useFleet(),
+  const { s } = useFleet(),
     edit = useEditors();
   const p = s.plans.find((p) => p.vehicleId === vehicle.id);
-  const [template, setTemplate] = useState(""),
-    [error, setError] = useState("");
-  const apply = async () => {
-    try {
-      await run({
-        type: "plan.apply",
-        vehicleId: vehicle.id,
-        templateId: template,
-        replace: !!p,
-      });
-      close();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Uložení selhalo.");
-    }
-  };
+  const [template, setTemplate] = useState("");
   return (
     <>
       <Notice>
@@ -457,23 +375,6 @@ function ServicePlan({ vehicle }: { vehicle: Vehicle }) {
             ))}
           </select>
         </label>
-        <Button
-          disabled={!template}
-          onClick={() =>
-            p
-              ? show(
-                  <Confirm
-                    title="Přepsat individuální plán"
-                    description="Všechny individuální položky budou nahrazeny položkami z vybrané šablony. Záznamy skutečných provedení zůstanou zachovány."
-                    action={apply}
-                    onDone={close}
-                  />,
-                )
-              : void apply()
-          }
-        >
-          Přiřadit šablonu
-        </Button>
         {p ? (
           <Button primary onClick={() => edit("plans", p)}>
             Upravit individuální plán
@@ -487,7 +388,6 @@ function ServicePlan({ vehicle }: { vehicle: Vehicle }) {
           </Button>
         )}
       </div>
-      {error && <Notice error>{error}</Notice>}
       {p?.items.length ? (
         p.items.map((i) => (
           <div className="list-item" key={i.id}>
@@ -506,46 +406,6 @@ function ServicePlan({ vehicle }: { vehicle: Vehicle }) {
               Další: {date(i.nextDate)}
               <small>{number(i.nextKm, "km")}</small>
             </div>
-            <Button
-              onClick={() =>
-                show(
-                  <Dialog title={"Provedení · " + i.name} onClose={close}>
-                    <div className="dialog-body">
-                      <Form
-                        fields={[
-                          {
-                            key: "date",
-                            label: "Skutečné datum",
-                            type: "date",
-                            required: true,
-                            initial: today(),
-                          },
-                          {
-                            key: "km",
-                            label: "Skutečný tachometr (km)",
-                            type: "number",
-                            required: true,
-                          },
-                        ]}
-                        onSubmit={async (v) => {
-                          await run({
-                            type: "plan.complete",
-                            planId: p.id,
-                            itemId: i.id,
-                            date: String(v.date),
-                            km: Number(v.km),
-                            version: p.version,
-                          });
-                          close();
-                        }}
-                      />
-                    </div>
-                  </Dialog>,
-                )
-              }
-            >
-              Zaznamenat provedení
-            </Button>
           </div>
         ))
       ) : (
@@ -589,7 +449,7 @@ export function DriverPage() {
                     description={
                       d.suspended
                         ? "Obnovení zachová všechny ostatní překážky včetně platnosti oprávnění."
-                        : "Stávající zakázky zůstanou zachovány a případný konflikt bude označen."
+                        : "Stávající zakázky zůstanou zachovány."
                     }
                     action={() =>
                       run({
@@ -632,7 +492,6 @@ export function DriverPage() {
           selected={tab}
           items={[
             ["overview", "Přehled"],
-            ["licences", "Oprávnění a kvalifikace"],
             ["documents", "Dokumenty"],
             ["assignments", "Přidělení"],
             ["operations", "Zakázky a jízdy"],
@@ -646,8 +505,6 @@ export function DriverPage() {
                   ["Pracovní e-mail", d.email || null],
                   ["Pracovní telefon", d.phone || null],
                   ["Stav profilu", driverState(d)],
-                  ["Zdravotní způsobilost", d.medicalState],
-                  ["Platnost způsobilosti", date(d.medicalUntil)],
                 ]}
               />
               {(!d.email || !d.phone || !d.licences.length) && (
@@ -657,40 +514,11 @@ export function DriverPage() {
               )}
             </>
           )}
-          {tab === "licences" && (
-            <>
-              <Button onClick={() => edit("drivers", d)}>
-                Upravit oprávnění a kvalifikace
-              </Button>
-              {[...d.licences, ...d.qualifications].map((l, i) => (
-                <div className="list-item" key={i}>
-                  <strong>{l.name}</strong>
-                  <span>{date(l.validUntil)}</span>
-                  <Badge
-                    value={
-                      l.validUntil && l.validUntil >= today()
-                        ? "Platné"
-                        : "Není doloženo / propadlé"
-                    }
-                  />
-                </div>
-              ))}
-              <Notice>
-                Zdravotní způsobilost: {d.medicalState} · {date(d.medicalUntil)}
-                . Eviduje se pouze stav a platnost.
-              </Notice>
-            </>
-          )}
           {tab === "documents" && (
             <DocumentList ownerType="driver" ownerId={d.id} />
           )}
           {tab === "assignments" && <Assignments driverId={d.id} />}
-          {tab === "operations" && (
-            <>
-              <OrderTable rows={s.orders.filter((o) => o.driverId === d.id)} />
-              <TripsTable rows={s.trips.filter((t) => t.driverId === d.id)} />
-            </>
-          )}
+          {tab === "operations" && <DriverOperationsTable driverId={d.id} />}
         </div>
       </section>
     </>

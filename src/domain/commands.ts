@@ -256,7 +256,6 @@ export function applyCommand(
         "Vyberte existující vozidlo.",
         "vehicleId",
       );
-      ensure(!old, "Ekonomické změny zadávejte jako navázanou korekci.");
       if (e.kind !== "Výdaj") {
         const original = s.expenses.find((x) => x.id === e.originalId);
         ensure(original, "Vyberte původní výdaj.", "originalId");

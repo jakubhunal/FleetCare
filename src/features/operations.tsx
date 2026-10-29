@@ -22,7 +22,6 @@ import { DRef, FaultTable, OrderTable, TripsTable, VRef } from "./tables";
 import {
   a6Due,
   activeAssignment,
-  orderConflict,
   orderWindow,
   suitability,
 } from "../domain/rules";
@@ -60,7 +59,6 @@ export function OrderPage() {
         text="Zkontrolujte odkaz a zvolený kontext."
       />
     );
-  const conflict = actor.role === "Řidič" ? null : orderConflict(s, o);
   return (
     <>
       <Back to={actor.role === "Řidič" ? "/my/orders" : "/orders"}>
@@ -92,7 +90,6 @@ export function OrderPage() {
           <Badge value={o.state} />
         </div>
       </div>
-      {conflict && <Notice error>Konflikt přiřazení: {conflict}</Notice>}
       <section className="panel">
         <Tabs
           base={`/orders/${o.id}`}
@@ -544,9 +541,8 @@ export function FaultsPage() {
 }
 export function FaultPage() {
   const { id } = useParams();
-  const { s, actor, show, run } = useFleet(),
+  const { s, actor, show } = useFleet(),
     edit = useEditors();
-  const [err, setErr] = useState("");
   const f = s.faults.find((f) => f.id === id);
   if (!f) return <Empty title="Závada není dostupná" />;
   const service = s.services.find((x) => x.id === f.serviceId);
@@ -605,7 +601,6 @@ export function FaultPage() {
       {actor.role !== "Řidič" && (
         <>
           <Panel title="Komunikační požadavky">
-            {err && <Notice error>{err}</Notice>}
             {s.notifications
               .filter((n) => n.aggregateId === f.id)
               .map((n) => (
@@ -625,24 +620,6 @@ export function FaultPage() {
                     </small>
                   </div>
                   <Badge value={n.state} />
-                  {!["skipped_no_recipient", "sent", "sending"].includes(
-                    n.state,
-                  ) && (
-                    <Button
-                      onClick={async () => {
-                        try {
-                          await run({ type: "notification.retry", id: n.id });
-                          setErr("");
-                        } catch (e) {
-                          setErr(
-                            e instanceof Error ? e.message : "Operace selhala.",
-                          );
-                        }
-                      }}
-                    >
-                      Obnovit příjemce
-                    </Button>
-                  )}
                 </div>
               ))}
           </Panel>
