@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, FileText, Pencil } from "lucide-react";
 import { useFleet } from "../app/context";
 import {
   Back,
   Badge,
   Button,
+  ChoiceButton,
   DataGrid,
   DataTable,
   Dialog,
@@ -19,70 +21,67 @@ import { useEditors } from "./editors";
 import { DocumentList, useUpload } from "./documents";
 import { DRef, FuelTable, VRef } from "./tables";
 import { date, money, number } from "../lib/format";
+import { FuelIntakeDialog } from "./fuel-intake";
 import { ReportsPage } from "./reports";
 export function CostsPage() {
-  const { tab = "fuel" } = useParams();
-  const { s } = useFleet(),
+  const { tab = "overview" } = useParams();
+  const { s, show } = useFleet(),
     edit = useEditors(),
     upload = useUpload();
+  const tableActions =
+    tab === "fuel" ? (
+      <ChoiceButton
+        label="Zadat tankování"
+        icon={<Plus size={17} />}
+        choices={[
+          { label: "Manuálně", action: () => edit("fuels") },
+          {
+            label: "Nahrát účtenku",
+            action: () => show(<FuelIntakeDialog />),
+          },
+        ]}
+      />
+    ) : tab === "statements" ? (
+      <Button
+        primary
+        onClick={() => upload("statement", "new", undefined, "CCS výpis")}
+      >
+        <Upload size={17} />
+        Import CCS PDF
+      </Button>
+    ) : tab === "expenses" ? (
+      <Button primary onClick={() => edit("expenses")}>
+        <Plus size={17} />
+        Nový výdaj
+      </Button>
+    ) : null;
   return (
     <>
       <PageHead
         title="Náklady a CCS"
         subtitle="Doložené výdaje, tankování a souvislosti CCS podkladů."
-        actions={
-          tab === "fuel" ? (
-            <>
-              <Button primary onClick={() => edit("fuels")}>
-                <Plus size={17} />
-                Zadat tankování
-              </Button>
-            </>
-          ) : tab === "statements" ? (
-            <Button
-              primary
-              onClick={() => upload("statement", "new", undefined, "CCS výpis")}
-            >
-              <Upload size={17} />
-              Import CCS PDF
-            </Button>
-          ) : tab === "expenses" ? (
-            <Button primary onClick={() => edit("expenses")}>
-              <Plus size={17} />
-              Nový výdaj
-            </Button>
-          ) : null
-        }
       />
       <div className="panel">
         <Tabs
           base="/costs"
           selected={tab}
           items={[
+            ["overview", "Přehled nákladů"],
             ["fuel", "Tankování"],
             ["statements", "CCS výpisy"],
             ["expenses", "Ostatní výdaje"],
-            ["overview", "Přehled nákladů"],
           ]}
         />
         <div className="detail-body">
           {tab === "fuel" && (
             <>
-              <Notice>
-                Tankování lze uložit i s neúplnými údaji a přiložit účtenku v
-                jeho detailu. Extrakce účtenek zatím není připojena.
-              </Notice>
-              <FuelTable rows={s.fuels} />
+              <FuelTable rows={s.fuels} toolbarActions={tableActions} />
             </>
           )}
           {tab === "statements" && (
             <>
-              <Notice>
-                Výpisy přicházejí e-mailem. Ruční náhradní vstup uloží
-                originální PDF. Datum přijetí a datum transakcí se evidují
-                odděleně.
-              </Notice>
               <DataTable
+                toolbarActions={tableActions}
                 rows={s.statements}
                 path={(x) => `/statements/${x.id}`}
                 search={(x) => x.name}
@@ -132,6 +131,7 @@ export function CostsPage() {
           )}
           {tab === "expenses" && (
             <DataTable
+              toolbarActions={tableActions}
               rows={s.expenses}
               path={(e) => `/expenses/${e.id}`}
               search={(e) => e.description + " " + e.category}
@@ -191,6 +191,16 @@ export function FuelPage() {
   const f = s.fuels.find((f) => f.id === id);
   if (!f) return <Empty title="Tankování není dostupné" />;
   const transactions = s.transactions.filter((t) => t.fuelId === f.id);
+  const differences = transactions.filter(
+    (t) =>
+      t.state !== "Vyřešeno" &&
+      (t.currency !== f.currency ||
+        t.amountMinor !== f.amountMinor ||
+        t.litres !== f.litres ||
+        Date.parse(t.at) !== Date.parse(f.at) ||
+        (t.cardId && t.cardId !== f.cardId) ||
+        (t.vehicleId && t.vehicleId !== f.vehicleId)),
+  );
   return (
     <>
       <Back to={actor.role === "Řidič" ? "/my/fuel" : "/costs/fuel"}>
@@ -200,108 +210,102 @@ export function FuelPage() {
         title="Detail tankování"
         subtitle={date(f.at, true)}
         actions={
-          <Button primary onClick={() => edit("fuels", f)}>
+          <Button onClick={() => edit("fuels", f)}>
             Doplnit / opravit záznam
           </Button>
         }
       />
-      <div className="two-columns">
-        <Panel title="Záznam řidiče">
-          <p>
-            <Badge value={f.state} />
-          </p>
-          <DataGrid
-            items={[
-              ["Vozidlo", <VRef id={f.vehicleId} />],
-              ["Řidič", <DRef id={f.driverId} />],
-              ["Datum transakce", date(f.at, true)],
-              ["Litry", number(f.litres, "l")],
-              ["Částka včetně DPH", money(f.amountMinor, f.currency)],
-              ["Palivo", f.fuel || null],
-              ["Stanice", f.station || null],
-              ["Tachometr", number(f.km, "km")],
-              ["Plná nádrž", f.full],
-              [
-                "CCS karta",
-                s.cards.find((c) => c.id === f.cardId)?.number ||
-                  f.cardId ||
-                  "Bez karty",
-              ],
-            ]}
-          />
-          <DocumentList
-            ownerType="fuel"
-            ownerId={f.id}
-            vehicleId={f.vehicleId}
-          />
-        </Panel>
-        {actor.role !== "Řidič" && (
-          <Panel title="CCS podklady">
-            {transactions.length ? (
-              transactions.map((t) => (
-                <div className="subform" key={t.id}>
-                  <DataGrid
-                    items={[
-                      ["CCS částka", money(t.amountMinor, t.currency)],
-                      [
-                        "Rozdíl",
-                        f.amountMinor === null
-                          ? "Nelze vyhodnotit"
-                          : money(t.amountMinor - f.amountMinor, t.currency),
-                      ],
-                      ["Transakce", date(t.at, true)],
-                      ["Výsledek", t.resolution || null],
-                    ]}
-                  />
-                  <p>
-                    <Badge value={t.state} />
-                  </p>
-                  <Link className="btn" to={`/transactions/${t.id}`}>
-                    Detail transakce a řešení →
+      <Panel title="Záznam řidiče">
+        <Badge value={f.state} />
+        <DataGrid
+          items={[
+            ["Vozidlo", <VRef id={f.vehicleId} />],
+            ["Řidič", <DRef id={f.driverId} />],
+            ["Datum transakce", date(f.at, true)],
+            ["Litry", number(f.litres, "l")],
+            ["Částka včetně DPH", money(f.amountMinor, f.currency)],
+            ["Palivo", f.fuel || null],
+            ["Stanice", f.station || null],
+            ["Tachometr", number(f.km, "km")],
+            ["Plná nádrž", f.full],
+            [
+              "CCS karta",
+              s.cards.find((c) => c.id === f.cardId)?.number ||
+                f.cardId ||
+                "Bez karty",
+            ],
+          ]}
+        />
+      </Panel>
+      {actor.role !== "Řidič" && (
+        <Panel title="Srovnání s CCS">
+          {transactions.length ? (
+            transactions.map((t) => (
+              <div className="subform" key={t.id}>
+                <DataGrid
+                  items={[
+                    ["CCS částka", money(t.amountMinor, t.currency)],
+                    ["CCS litry", number(t.litres, "l")],
+                    ["CCS datum", date(t.at, true)],
+                    [
+                      "Rozdíl",
+                      t.currency !== f.currency || f.amountMinor === null
+                        ? "Nelze vyhodnotit"
+                        : money(t.amountMinor - f.amountMinor, t.currency),
+                    ],
+                    ["Výsledek", t.resolution || null],
+                  ]}
+                />
+                <Badge value={t.state} />{" "}
+                <Link to={`/transactions/${t.id}`}>Detail transakce →</Link>
+              </div>
+            ))
+          ) : (
+            <p className="muted">Záznam zatím není spojen s výpisem.</p>
+          )}
+          {!!differences.length && (
+            <Button
+              primary
+              onClick={() =>
+                show(
+                  <ResolveDialog
+                    transactionId={differences[0].id}
+                    transactionIds={differences.map((t) => t.id)}
+                    initialFuelId={f.id}
+                  />,
+                )
+              }
+            >
+              Vyřešit CCS rozdíl
+            </Button>
+          )}
+          {!transactions.length &&
+            s.transactions
+              .filter((t) => !t.fuelId && t.currency === f.currency)
+              .map((t) => (
+                <p key={t.id}>
+                  <Link to={`/transactions/${t.id}`}>
+                    {date(t.at, true)} · {money(t.amountMinor, t.currency)}
                   </Link>
-                  <DocumentList
-                    ownerType="statement"
-                    ownerId={t.statementId}
-                    add={false}
-                  />
-                </div>
-              ))
-            ) : (
-              <>
-                <Notice>
-                  Účtenka a CCS transakce tvoří jeden kanonický náklad. Záznam
-                  zatím není spojen s výpisem.
-                </Notice>
-                {s.transactions
-                  .filter(
-                    (t) =>
-                      t.currency === f.currency &&
-                      (!t.fuelId || t.fuelId === f.id),
-                  )
-                  .map((t) => (
-                    <div className="list-item" key={t.id}>
-                      <Link to={`/transactions/${t.id}`}>
-                        {date(t.at, true)} · {money(t.amountMinor, t.currency)}
-                      </Link>
-                      <Button
-                        onClick={() =>
-                          show(
-                            <ResolveDialog
-                              transactionId={t.id}
-                              initialFuelId={f.id}
-                            />,
-                          )
-                        }
-                      >
-                        Spojit a vyřešit
-                      </Button>
-                    </div>
-                  ))}
-              </>
-            )}
-          </Panel>
-        )}
-      </div>
+                </p>
+              ))}
+        </Panel>
+      )}
+      <Panel title="Dokumenty">
+        <DocumentList
+          ownerType="fuel"
+          ownerId={f.id}
+          vehicleId={f.vehicleId}
+          relatedOwners={
+            actor.role !== "Řidič"
+              ? transactions.map((t) => ({
+                  ownerType: "statement" as const,
+                  ownerId: t.statementId,
+                }))
+              : []
+          }
+        />
+      </Panel>
     </>
   );
 }
@@ -322,8 +326,14 @@ export function StatementPage() {
               d.ownerType === "statement" && d.ownerId === x.id && !d.deletedAt,
           )
           .map((d) => (
-            <Link className="btn" key={d.id} to={`/documents/${d.id}`}>
-              {d.name}
+            <Link
+              className="btn"
+              key={d.id}
+              to={`/documents/${d.id}`}
+              title={d.name}
+            >
+              <FileText size={17} />
+              Zobrazit výpis (PDF)
             </Link>
           ))}
       />
@@ -468,20 +478,39 @@ export function TransactionPage() {
 function ResolveDialog({
   transactionId,
   initialFuelId,
+  transactionIds,
 }: {
   transactionId: string;
   initialFuelId?: string;
+  transactionIds?: string[];
 }) {
   const { s, run, close } = useFleet();
-  const t = s.transactions.find((x) => x.id === transactionId)!;
+  const [selectedId, setSelectedId] = useState(transactionId);
+  const t = s.transactions.find((x) => x.id === selectedId)!;
   return (
     <Dialog title="Vyřešit CCS rozdíl" onClose={close}>
       <div className="dialog-body">
+        {transactionIds && transactionIds.length > 1 && (
+          <label>
+            CCS transakce
+            <select
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+            >
+              {transactionIds.map((id) => (
+                <option key={id} value={id}>
+                  {s.transactions.find((x) => x.id === id)?.externalId}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <Notice>
           Vyberte jednoznačný podklad a částku, která bude jediným kanonickým
           nákladem. Samotná účtenka se znovu nepřičte.
         </Notice>
         <Form
+          key={t.id}
           fields={[
             {
               key: "fuelId",
@@ -540,7 +569,10 @@ export function ExpensePage() {
         title={e.description}
         subtitle={`${e.category} · ${e.kind}`}
         actions={
-          <Button onClick={() => edit("expenses", e)}>Upravit výdaj</Button>
+          <Button onClick={() => edit("expenses", e)}>
+            <Pencil size={17} />
+            Upravit
+          </Button>
         }
       />
       <Panel>

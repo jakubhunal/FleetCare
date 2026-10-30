@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
@@ -10,7 +11,17 @@ import {
 } from "../domain/models";
 import type { EditableCollection } from "../data/contracts";
 import { useFleet } from "../app/context";
-import { Button, Dialog, Form, Notice, type FieldSpec } from "../components/ui";
+import {
+  Button,
+  Dialog,
+  Field,
+  FilePicker,
+  Form,
+  Notice,
+  type FieldSpec,
+} from "../components/ui";
+import { DomainError } from "../domain/rules";
+import { validateUpload } from "../data/uploads";
 import { localTime, toUtc, today } from "../lib/format";
 const options = (items: readonly string[]): [string, string][] =>
   items.map((x) => [x, x]);
@@ -309,7 +320,7 @@ function Entitlements({
       <h3>{title}</h3>
       {value.map((item, i) => (
         <div className="repeat-row" key={i}>
-          <label>
+          <Field>
             Název
             <input
               aria-label={`${title} název ${i + 1}`}
@@ -323,8 +334,8 @@ function Entitlements({
               }
               required
             />
-          </label>
-          <label>
+          </Field>
+          <Field>
             Platnost do
             <input
               type="date"
@@ -337,7 +348,7 @@ function Entitlements({
                 )
               }
             />
-          </label>
+          </Field>
           <Button
             aria-label={`Odebrat ${title} ${i + 1}`}
             onClick={() => onChange(value.filter((_, n) => n !== i))}
@@ -368,9 +379,10 @@ function PlanItems({
       {value.map((item, i) => (
         <div className="repeat-card" key={item.id}>
           <div className="repeat-row">
-            <label>
+            <Field>
               Název úkonu
               <input
+                name={`items.${i}.name`}
                 required
                 value={item.name}
                 onChange={(e) =>
@@ -381,8 +393,9 @@ function PlanItems({
                   )
                 }
               />
-            </label>
+            </Field>
             <Button
+              danger
               aria-label="Odebrat úkon"
               onClick={() => onChange(value.filter((x) => x.id !== item.id))}
             >
@@ -400,7 +413,7 @@ function PlanItems({
                 "nextDate",
               ] as const
             ).map((key, k) => (
-              <label key={key}>
+              <Field key={key}>
                 {
                   [
                     "Interval (km)",
@@ -412,6 +425,7 @@ function PlanItems({
                   ][k]
                 }
                 <input
+                  name={`items.${i}.${key}`}
                   type={key.includes("Date") ? "date" : "text"}
                   inputMode={key.includes("Date") ? undefined : "decimal"}
                   value={item[key] ?? ""}
@@ -432,7 +446,7 @@ function PlanItems({
                     )
                   }
                 />
-              </label>
+              </Field>
             ))}
           </div>
         </div>
@@ -473,9 +487,10 @@ function Stops({
       {value.map((item, i) => (
         <div className="repeat-card" key={item.id}>
           <div className="form-grid">
-            <label>
+            <Field>
               Typ
               <select
+                name={`stops.${i}.type`}
                 value={item.type}
                 onChange={(e) =>
                   onChange(
@@ -491,10 +506,11 @@ function Stops({
                   <option key={x}>{x}</option>
                 ))}
               </select>
-            </label>
-            <label>
+            </Field>
+            <Field>
               Místo
               <input
+                name={`stops.${i}.place`}
                 value={item.place}
                 onChange={(e) =>
                   onChange(
@@ -504,11 +520,12 @@ function Stops({
                   )
                 }
               />
-            </label>
+            </Field>
             {(["from", "to"] as const).map((key) => (
-              <label key={key}>
+              <Field key={key}>
                 Okno {key === "from" ? "od" : "do"}
                 <input
+                  name={`stops.${i}.${key}`}
                   type="datetime-local"
                   value={item[key] ? localTime(item[key]) : ""}
                   onChange={(e) =>
@@ -526,11 +543,12 @@ function Stops({
                     )
                   }
                 />
-              </label>
+              </Field>
             ))}
-            <label>
+            <Field>
               Kontakt
               <input
+                name={`stops.${i}.contact`}
                 value={item.contact}
                 onChange={(e) =>
                   onChange(
@@ -540,10 +558,11 @@ function Stops({
                   )
                 }
               />
-            </label>
-            <label>
+            </Field>
+            <Field>
               Pokyny
               <input
+                name={`stops.${i}.instructions`}
                 value={item.instructions}
                 onChange={(e) =>
                   onChange(
@@ -553,7 +572,7 @@ function Stops({
                   )
                 }
               />
-            </label>
+            </Field>
           </div>
         </div>
       ))}
@@ -585,7 +604,11 @@ export function EntityEditor({
   defaults?: Record<string, unknown>;
   startTrip?: boolean;
 }) {
-  const { s, actor, run, close } = useFleet();
+  const { s, actor, run, upload, close } = useFleet();
+  const [attachment, setAttachment] = useState<File[]>([]);
+  const [savedExpenseVehicle, setSavedExpenseVehicle] = useState<string | null>(
+    null,
+  );
   const [dirty, setDirty] = useState(false);
   const [key] = useState(() => crypto.randomUUID());
   const data: Record<string, unknown> = { ...record, ...defaults };
@@ -600,6 +623,9 @@ export function EntityEditor({
         ? record.qualifications
         : []) as Driver["qualifications"],
     );
+  const [templateId, setTemplateId] = useState(
+    record && "templateId" in record ? String(record.templateId || "") : "",
+  );
   const [items, setItems] = useState(
     (record && "items" in record
       ? record.items
@@ -652,12 +678,6 @@ export function EntityEditor({
       onClose={close}
     >
       <div className="dialog-body">
-        {collection === "vehicles" && (
-          <Notice>
-            Neznámou kapacitu ponechte prázdnou. Rezerva může být normálně v
-            provozu.
-          </Notice>
-        )}
         {collection === "faults" && !record && (
           <Notice>
             Hlášení se uloží společně s oddělenými požadavky na komunikaci.
@@ -709,6 +729,24 @@ export function EntityEditor({
             }
             if (collection === "templates" || collection === "plans")
               values.items = items;
+            if (collection === "templates" || collection === "plans") {
+              const issues: z.core.$ZodIssue[] = [];
+              items.forEach((item, index) => {
+                if (
+                  !(
+                    (item.intervalKm ?? 0) > 0 || (item.intervalMonths ?? 0) > 0
+                  )
+                )
+                  for (const field of ["intervalKm", "intervalMonths"])
+                    issues.push({
+                      code: "custom",
+                      path: ["items", index, field],
+                      message: "Zadejte kladný interval v km nebo měsících.",
+                    });
+              });
+              if (issues.length) throw new z.ZodError(issues);
+            }
+            if (collection === "plans") values.templateId = templateId || null;
             if (collection === "orders") values.stops = stops;
             if (collection === "expenses") {
               values.kind = record && "kind" in record ? record.kind : "Výdaj";
@@ -720,6 +758,41 @@ export function EntityEditor({
               values.state = "Nahlášena";
               values.caseReference = "FC-" + key;
               values.driverId = actor.driverId;
+            }
+            if (collection === "expenses" && !record) {
+              const vehicleId = savedExpenseVehicle || String(values.vehicleId);
+              const input = {
+                ownerType: "expense" as const,
+                ownerId: key,
+                vehicleId,
+                type: "Příloha" as const,
+                files: attachment,
+                idempotencyKey: key + "-attachment",
+              };
+              if (attachment.length) {
+                try {
+                  validateUpload(input);
+                } catch (e) {
+                  throw new DomainError(
+                    e instanceof Error ? e.message : "Neplatná příloha.",
+                    "files",
+                  );
+                }
+              }
+              if (!savedExpenseVehicle) {
+                await run(
+                  {
+                    type: "save",
+                    collection: "expenses",
+                    data: { ...values, id: key },
+                  },
+                  key,
+                );
+                setSavedExpenseVehicle(vehicleId);
+              }
+              if (attachment.length) await upload(input);
+              close();
+              return;
             }
             if (startTrip) await run({ type: "trip.start", data: values }, key);
             else
@@ -736,6 +809,25 @@ export function EntityEditor({
             close();
           }}
         >
+          {collection === "expenses" && !record && (
+            <>
+              <FilePicker
+                files={attachment}
+                onChange={(files) => {
+                  setAttachment(files);
+                  setDirty(true);
+                }}
+                label="Přidat přílohu"
+              />
+              {savedExpenseVehicle && (
+                <Notice>
+                  Výdaj je uložen. Pokud nahrání přílohy selhalo, zopakujte
+                  uložení; nový výdaj nevznikne. Údaje výdaje lze poté upravit v
+                  jeho detailu.
+                </Notice>
+              )}
+            </>
+          )}
           {collection === "drivers" && (
             <>
               <Entitlements
@@ -750,6 +842,39 @@ export function EntityEditor({
               />
             </>
           )}
+          {collection === "plans" && (
+            <Field>
+              Šablona
+              <select
+                value={templateId}
+                onChange={(e) => {
+                  setDirty(true);
+                  setTemplateId(e.target.value);
+                  const template = s.templates.find(
+                    (t) => t.id === e.target.value,
+                  );
+                  if (template)
+                    setItems(
+                      template.items.map((i) => ({
+                        ...i,
+                        id: crypto.randomUUID(),
+                      })),
+                    );
+                }}
+              >
+                <option value="">Individuální plán</option>
+                {s.templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <small>
+                Výběr šablony předvyplní úkony. Změny se uloží až potvrzením
+                formuláře.
+              </small>
+            </Field>
+          )}
           {(collection === "templates" || collection === "plans") && (
             <PlanItems value={items} onChange={change(setItems)} />
           )}
@@ -762,9 +887,10 @@ export function EntityEditor({
               {bindings.map((b, i) => (
                 <div className="repeat-card" key={i}>
                   <div className="form-grid">
-                    <label>
+                    <Field>
                       Vozidlo
                       <select
+                        name={`bindings.${i}.vehicleId`}
                         value={b.vehicleId}
                         required
                         onChange={(e) => {
@@ -783,11 +909,12 @@ export function EntityEditor({
                           </option>
                         ))}
                       </select>
-                    </label>
+                    </Field>
                     {(["from", "to"] as const).map((k) => (
-                      <label key={k}>
+                      <Field key={k}>
                         Platnost {k === "from" ? "od" : "do"}
                         <input
+                          name={`bindings.${i}.${k}`}
                           type="date"
                           required={k === "from"}
                           value={b[k] || ""}
@@ -802,10 +929,11 @@ export function EntityEditor({
                             );
                           }}
                         />
-                      </label>
+                      </Field>
                     ))}
                   </div>
                   <Button
+                    danger
                     onClick={() =>
                       setBindings(bindings.filter((_, n) => n !== i))
                     }

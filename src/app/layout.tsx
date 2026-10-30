@@ -14,7 +14,7 @@ import {
   BarChart3,
   Menu,
   FileText,
-  Receipt,
+  Fuel,
   ClipboardList,
 } from "lucide-react";
 import { useFleet } from "./context";
@@ -38,7 +38,7 @@ const driverNav = [
   ["/my/orders", "Moje zakázky", Package],
   ["/my/trips", "Moje jízdy", Route],
   ["/my/fault", "Nahlásit závadu", Wrench],
-  ["/my/fuel", "Zadat tankování", Receipt],
+  ["/my/fuel", "Zadat tankování", Fuel],
   ["/my/requests", "Moje úkoly", ClipboardList],
   ["/my/documents", "Moje dokumenty", FileText],
 ] as const;
@@ -62,7 +62,16 @@ export function Layout({
     retry: false,
     staleTime: 60000,
   });
-  const entries = actor.role === "Řidič" ? driverNav : management;
+  const entries =
+    actor.role === "Řidič"
+      ? driverNav
+      : actor.role === "Vedení"
+        ? [
+            ...management.slice(0, -1),
+            ["/reports", "Reporty", BarChart3] as const,
+            management[management.length - 1],
+          ]
+        : management;
   return (
     <>
       <a
@@ -110,12 +119,6 @@ export function Layout({
               <span>{label}</span>
             </NavLink>
           ))}
-          {actor.role === "Vedení" && (
-            <NavLink to="/reports">
-              <BarChart3 size={19} />
-              Reporty
-            </NavLink>
-          )}
         </nav>
       </aside>
       {menu && (
@@ -171,20 +174,6 @@ export function Layout({
         </div>
         <main className="content" id="main" tabIndex={-1}>
           {children}
-          <footer>
-            <span>FleetCare © {new Date().getFullYear()}</span>
-            {import.meta.env.VITE_BUILD_SHA && (
-              <a
-                href={`https://github.com/jakubhunal/FleetCare/commit/${import.meta.env.VITE_BUILD_SHA}`}
-                target="_blank"
-                rel="noreferrer"
-                title="Zdrojový commit nasazené verze"
-              >
-                Verze {import.meta.env.VITE_BUILD_SHA.slice(0, 7)}
-              </a>
-            )}
-            <span>{actor.role} · přepínač kontextu bez přihlášení</span>
-          </footer>
         </main>
       </div>
     </>

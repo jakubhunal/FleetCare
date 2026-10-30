@@ -1,6 +1,6 @@
 import { Plus, Upload } from "lucide-react";
 import { useFleet } from "../app/context";
-import { Button, Dialog } from "../components/ui";
+import { Button, Dialog, ChoiceButton } from "../components/ui";
 import { useEditors } from "./editors";
 import { useUpload } from "./documents";
 
@@ -27,10 +27,24 @@ export function useAddVehicle() {
 }
 
 export function AddVehicleButton() {
-  const add = useAddVehicle();
+  const edit = useEditors();
+  const upload = useUpload();
   return (
-    <Button primary onClick={add} aria-haspopup="dialog">
-      <Plus size={18} /> Přidat vozidlo
-    </Button>
+    <ChoiceButton
+      label="Přidat vozidlo"
+      icon={<Plus size={18} />}
+      choices={[
+        {
+          label: "Zadat ručně",
+          icon: <Plus size={18} />,
+          action: () => edit("vehicles"),
+        },
+        {
+          label: "Nahrát STK",
+          icon: <Upload size={18} />,
+          action: () => upload("intake", "new", undefined, "STK"),
+        },
+      ]}
+    />
   );
 }

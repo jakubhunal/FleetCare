@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useFleet } from "../app/context";
 import { Badge, DataTable } from "../components/ui";
@@ -36,10 +37,17 @@ export function DRef({ id }: { id: string | null }) {
     <>Nepřiděleno</>
   );
 }
-export function VehicleTable({ rows }: { rows: Vehicle[] }) {
+export function VehicleTable({
+  rows,
+  toolbarActions,
+}: {
+  rows: Vehicle[];
+  toolbarActions?: ReactNode;
+}) {
   const { s } = useFleet();
   return (
     <DataTable
+      toolbarActions={toolbarActions}
       prefix="vehicles."
       rows={rows}
       path={(v) => `/vehicles/${v.id}`}
@@ -151,10 +159,17 @@ export function VehicleTable({ rows }: { rows: Vehicle[] }) {
     />
   );
 }
-export function DriverTable({ rows }: { rows: Driver[] }) {
+export function DriverTable({
+  rows,
+  toolbarActions,
+}: {
+  rows: Driver[];
+  toolbarActions?: ReactNode;
+}) {
   const { s } = useFleet();
   return (
     <DataTable
+      toolbarActions={toolbarActions}
       prefix="drivers."
       rows={rows}
       path={(d) => `/drivers/${d.id}`}
@@ -341,10 +356,17 @@ export function OrderTable({ rows }: { rows: Order[] }) {
     />
   );
 }
-export function TripsTable({ rows }: { rows: Trip[] }) {
+export function TripsTable({
+  rows,
+  toolbarActions,
+}: {
+  rows: Trip[];
+  toolbarActions?: ReactNode;
+}) {
   const { s } = useFleet();
   return (
     <DataTable
+      toolbarActions={toolbarActions}
       prefix="trips."
       rows={rows}
       path={(t) => `/trips/${t.id}`}
@@ -469,10 +491,17 @@ export function TripsTable({ rows }: { rows: Trip[] }) {
     />
   );
 }
-export function FaultTable({ rows }: { rows: Fault[] }) {
+export function FaultTable({
+  rows,
+  toolbarActions,
+}: {
+  rows: Fault[];
+  toolbarActions?: ReactNode;
+}) {
   const { s } = useFleet();
   return (
     <DataTable
+      toolbarActions={toolbarActions}
       prefix="faults."
       rows={rows}
       path={(f) => `/faults/${f.id}`}
@@ -549,9 +578,16 @@ export function FaultTable({ rows }: { rows: Fault[] }) {
     />
   );
 }
-export function FuelTable({ rows }: { rows: Records["fuels"][] }) {
+export function FuelTable({
+  rows,
+  toolbarActions,
+}: {
+  rows: Records["fuels"][];
+  toolbarActions?: ReactNode;
+}) {
   return (
     <DataTable
+      toolbarActions={toolbarActions}
       prefix="fuels."
       rows={rows}
       path={(f) => `/fuels/${f.id}`}
@@ -672,6 +708,12 @@ export function DriverOperationsTable({ driverId }: { driverId: string }) {
           label: "Všechny typy",
           options: optionPairs(["Zakázka", "Jízda"]),
           value: (r) => r.type,
+        },
+        {
+          key: "state",
+          label: "Všechny stavy",
+          options: optionPairs(Array.from(new Set(rows.map((r) => r.state)))),
+          value: (r) => r.state,
         },
       ]}
       columns={[

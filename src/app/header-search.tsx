@@ -100,7 +100,6 @@ export function HeaderSearch() {
           </Button>
         )}
         <Button
-          primary
           type="submit"
           className="search-submit"
           aria-label="Vyhledat"

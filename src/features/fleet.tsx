@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { Truck, UserPlus, Pencil, Pause, Play } from "lucide-react";
@@ -7,9 +8,11 @@ import {
   Badge,
   Button,
   DataGrid,
+  DataTable,
   Dialog,
   Empty,
   Form,
+  HistorySwitch,
   Notice,
   PageHead,
   Panel,
@@ -20,6 +23,7 @@ import { AddVehicleButton } from "./vehicle-intake";
 import { DocumentList } from "./documents";
 import {
   DRef,
+  VRef,
   DriverTable,
   DriverOperationsTable,
   FaultTable,
@@ -41,10 +45,9 @@ export function VehiclesPage() {
       <PageHead
         title="Vozidla"
         subtitle="Váš vozový park, jeho dostupnost a nejbližší povinnosti."
-        actions={<AddVehicleButton />}
       />
       <Panel>
-        <VehicleTable rows={s.vehicles} />
+        <VehicleTable rows={s.vehicles} toolbarActions={<AddVehicleButton />} />
       </Panel>
       {!!intake.length && (
         <Panel title="STK pro založení vozidla">
@@ -67,15 +70,17 @@ export function DriversPage() {
       <PageHead
         title="Řidiči"
         subtitle="Lidé, oprávnění a dostupnost vašeho týmu."
-        actions={
-          <Button primary onClick={() => edit("drivers")}>
-            <UserPlus size={18} />
-            Přidat řidiče
-          </Button>
-        }
       />
       <Panel>
-        <DriverTable rows={s.drivers} />
+        <DriverTable
+          rows={s.drivers}
+          toolbarActions={
+            <Button primary onClick={() => edit("drivers")}>
+              <UserPlus size={18} />
+              Přidat řidiče
+            </Button>
+          }
+        />
       </Panel>
     </>
   );
@@ -114,7 +119,7 @@ export function VehiclePage() {
             <>
               <Button onClick={() => edit("vehicles", v)}>
                 <Pencil size={17} />
-                Upravit vozidlo
+                Upravit informace o vozidle
               </Button>
             </>
           )
@@ -205,35 +210,35 @@ export function VehiclePage() {
           {tab === "costs" && (
             <>
               <FuelTable rows={s.fuels.filter((f) => f.vehicleId === v.id)} />
-              <Notice>
-                Ostatní výdaje a souhrn nákladů najdete v sekci{" "}
-                <Link to="/costs/expenses">Náklady a CCS</Link>.
-              </Notice>
             </>
           )}
           {tab === "assignments" && (
             <>
-              <Notice>
-                Svěření vozidla a řidič konkrétní zakázky jsou samostatné vazby.
-              </Notice>
-              <div className="section-actions">
-                <Button
-                  primary
-                  onClick={() => show(<AssignmentDialog vehicleId={v.id} />)}
-                >
-                  Přiřadit / změnit řidiče
-                </Button>
-                {a && (
-                  <Button
-                    onClick={() =>
-                      show(<AssignmentDialog vehicleId={v.id} end />)
-                    }
-                  >
-                    Ukončit přidělení
-                  </Button>
-                )}
-              </div>
-              <Assignments vehicleId={v.id} />
+              <Assignments
+                vehicleId={v.id}
+                actions={
+                  <>
+                    <Button
+                      primary
+                      onClick={() =>
+                        show(<AssignmentDialog vehicleId={v.id} />)
+                      }
+                    >
+                      Přiřadit / změnit řidiče
+                    </Button>
+                    {a && (
+                      <Button
+                        danger
+                        onClick={() =>
+                          show(<AssignmentDialog vehicleId={v.id} end />)
+                        }
+                      >
+                        Ukončit přidělení
+                      </Button>
+                    )}
+                  </>
+                }
+              />
             </>
           )}
           {!vehicleTabs.some(([key]) => key === tab) && (
@@ -264,6 +269,7 @@ function AssignmentDialog({
     >
       <div className="dialog-body">
         <Form
+          danger={end}
           onDirty={setDirty}
           fields={[
             ...(!end
@@ -308,112 +314,164 @@ function AssignmentDialog({
 function Assignments({
   vehicleId,
   driverId,
+  actions,
 }: {
   vehicleId?: string;
   driverId?: string;
+  actions?: ReactNode;
 }) {
   const { s } = useFleet();
   const [historical, setHistorical] = useState(false);
+  const now = new Date().toISOString();
+  const rows = s.assignments.filter(
+    (a) =>
+      (!vehicleId || a.vehicleId === vehicleId) &&
+      (!driverId || a.driverId === driverId) &&
+      (historical || !a.to || a.to > now),
+  );
   return (
-    <>
-      <label className="switch">
-        <input
-          type="checkbox"
-          checked={historical}
-          onChange={(e) => setHistorical(e.target.checked)}
-        />
-        Zobrazit i historické
-      </label>
-      {s.assignments
-        .filter(
-          (a) =>
-            (!vehicleId || a.vehicleId === vehicleId) &&
-            (!driverId || a.driverId === driverId) &&
-            (historical || !a.to || a.to > new Date().toISOString()),
-        )
-        .map((a) => (
-          <div className="list-item" key={a.id}>
-            <div>
-              <DRef id={a.driverId} />
-              <small>
-                {s.vehicles.find((v) => v.id === a.vehicleId)?.spz} ·{" "}
-                {date(a.from, true)} — {a.to ? date(a.to, true) : "Trvá"}
-              </small>
-            </div>
-            <span>
-              {a.reason}
-              <small>{number(a.odometer, "km")}</small>
-            </span>
-          </div>
-        ))}
-    </>
+    <DataTable
+      rows={rows}
+      prefix={`assignments-${vehicleId || driverId}.`}
+      search={(a) => {
+        const v = s.vehicles.find((v) => v.id === a.vehicleId);
+        return `${v?.spz} ${v?.model} ${s.drivers.find((d) => d.id === a.driverId)?.name} ${a.reason}`;
+      }}
+      toolbarActions={
+        <>
+          {actions}
+          <HistorySwitch checked={historical} onChange={setHistorical} />
+        </>
+      }
+      columns={[
+        driverId
+          ? {
+              key: "vehicle",
+              label: "SPZ / typ vozidla",
+              sort: (a) =>
+                s.vehicles.find((v) => v.id === a.vehicleId)?.spz || "",
+              render: (a) => (
+                <>
+                  <VRef id={a.vehicleId} />
+                  <small>
+                    {s.vehicles.find((v) => v.id === a.vehicleId)?.category} ·{" "}
+                    {s.vehicles.find((v) => v.id === a.vehicleId)?.model}
+                  </small>
+                </>
+              ),
+            }
+          : {
+              key: "driver",
+              label: "Řidič",
+              sort: (a) =>
+                s.drivers.find((d) => d.id === a.driverId)?.name || "",
+              render: (a) => <DRef id={a.driverId} />,
+            },
+        {
+          key: "period",
+          label: "Období od–do",
+          sort: (a) => a.from,
+          render: (a) => (
+            <>
+              {date(a.from, true)} — {a.to ? date(a.to, true) : "Trvá"}
+            </>
+          ),
+        },
+        {
+          key: "state",
+          label: "Stav",
+          render: (a) => (
+            <Badge
+              value={
+                a.to && a.to <= now
+                  ? "Ukončeno"
+                  : a.from > now
+                    ? "Plánováno"
+                    : "Aktivní"
+              }
+            />
+          ),
+        },
+        {
+          key: "km",
+          label: "Km",
+          sort: (a) => a.odometer,
+          render: (a) => number(a.odometer, "km"),
+        },
+        { key: "reason", label: "Důvod", render: (a) => a.reason },
+      ]}
+    />
   );
 }
 function ServicePlan({ vehicle }: { vehicle: Vehicle }) {
   const { s } = useFleet(),
     edit = useEditors();
   const p = s.plans.find((p) => p.vehicleId === vehicle.id);
-  const [template, setTemplate] = useState("");
   return (
     <>
-      <Notice>
-        Šablona předvyplní individuální plán. Změna globální šablony tento plán
-        sama nepřepíše.
-      </Notice>
-      <div className="section-actions">
-        <label>
-          Šablona
-          <select
-            value={template}
-            onChange={(e) => setTemplate(e.target.value)}
-          >
-            <option value="">Vyberte šablonu…</option>
-            {s.templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {p ? (
-          <Button primary onClick={() => edit("plans", p)}>
-            Upravit individuální plán
-          </Button>
-        ) : (
-          <Button
-            primary
-            onClick={() => edit("plans", undefined, { vehicleId: vehicle.id })}
-          >
+      {!p?.items.length && (
+        <div className="section-actions">
+          <Button onClick={() => edit("plans", p, { vehicleId: vehicle.id })}>
             Vytvořit individuální plán
           </Button>
-        )}
-      </div>
-      {p?.items.length ? (
-        p.items.map((i) => (
-          <div className="list-item" key={i.id}>
-            <div>
-              <strong>{i.name}</strong>
-              <small>
-                Interval {number(i.intervalKm, "km")} /{" "}
-                {number(i.intervalMonths, "měsíců")}
-              </small>
-              <small>
-                Poslední provedení: {date(i.lastDate)} ·{" "}
-                {number(i.lastKm, "km")}
-              </small>
-            </div>
-            <div>
-              Další: {date(i.nextDate)}
-              <small>{number(i.nextKm, "km")}</small>
-            </div>
-          </div>
-        ))
-      ) : (
-        <Empty
-          title="Servisní plán není vyplněn"
-          text="Přiřaďte vlastní šablonu nebo vytvořte individuální plán. Intervaly výrobce nejsou předvyplněny."
-        />
+        </div>
       )}
+      <DataTable
+        rows={p?.items || []}
+        search={(i) => i.name}
+        columns={[
+          {
+            key: "name",
+            label: "Úkon",
+            sort: (i) => i.name,
+            render: (i) => <strong>{i.name}</strong>,
+          },
+          {
+            key: "interval",
+            label: "Interval km / měsíců",
+            render: (i) => (
+              <>
+                {number(i.intervalKm, "km")} /{" "}
+                {number(i.intervalMonths, "měsíců")}
+              </>
+            ),
+          },
+          {
+            key: "last",
+            label: "Poslední provedení",
+            sort: (i) => i.lastDate,
+            render: (i) => (
+              <>
+                {date(i.lastDate)}
+                <small>{number(i.lastKm, "km")}</small>
+              </>
+            ),
+          },
+          {
+            key: "next",
+            label: "Další termín / hranice",
+            sort: (i) => i.nextDate,
+            render: (i) => (
+              <>
+                {date(i.nextDate)}
+                <small>{number(i.nextKm, "km")}</small>
+              </>
+            ),
+          },
+          {
+            key: "actions",
+            label: "Akce",
+            render: (i) => (
+              <Button
+                aria-label={`Upravit individuální plán · ${i.name}`}
+                onClick={() => edit("plans", p)}
+              >
+                <Pencil size={16} />
+              </Button>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

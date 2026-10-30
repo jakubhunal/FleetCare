@@ -64,3 +64,32 @@ Chromium s izolovanými fiktivními daty, desktop 1440 px a mobil 390 px:
 - CCS: skutečný import syntetického platného PDF přes UI, detail s jedinou tabulkou transakcí, otevření původního dokumentu z nového odkazu, iframe náhled a stažení originálu po reloadu se shodnými bajty. Bez běhových chyb v kontrolovaných dokumentových scénářích.
 
 Nenalezena chyba aplikace v těchto scénářích. Nejde o ověření všech kombinací vstupů ani ostrého HTTP backendu, OCR, e-mailů, Make či veřejného nasazení. Mobilní kontrola použila Chromium s rozměry telefonu, nikoli fyzické zařízení. Zůstává známé chování nového editoru: při uložení starší zakázky s více body trasy se zachová první a poslední bod (viz progress.md).
+
+## 29. 10. 2026 — UX/FE refinements A1–C9
+
+Větev `codex/ux-refinements`, aplikační commit `7fffcfc`: prošly typecheck, lint, 43 testů v 11 souborech, produkční build, kontrola čistého produktu a generování kontraktů bez rozdílu. Chromium desktop 1440 px a mobil 390 px ověřilo nové dialogy, tabulky, historii, konkrétní chyby polí, dokumentové uploady/stažení, přílohu výdaje včetně opakování selhání bez duplicity a řidičův prostor. Produkční preview prošlo založením vozidla, reloadem, přímými SPA cestami a skutečným XLSX exportem. Podrobný report, vlastní rozhodnutí, změny API a hranice ověření jsou v [ux-refinements.md](ux-refinements.md). Nenasazováno; externí integrace nebyly ověřeny.
+
+## 29. 10. 2026 — Následné ověření dotčených funkcionalit na žádost uživatele
+
+Znovu ověřena větev `codex/ux-refinements` na commitu `f2efa8c` (aplikační kód `7fffcfc`). Výchozí pracovní strom byl čistý; nebyla nutná žádná oprava aplikace.
+
+- Typecheck, lint, všech 43 testů v 11 souborech a produkční build prošly. Regenerace API kontraktů nevytvořila rozdíl; kontrola čistého produktu bez demo dat také prošla. Build nadále hlásí existující upozornění na velikost chunků.
+- Chromium zopakovalo přiřazení zakázky v dialogu a persistenci, shodné/rozdílné CCS podklady a vyřešení rozdílu, individuální plán a šablonu, detail/editaci termínu a kalendář, tabulky přidělení a historii, dropdowny, nákladový přehled, konkrétní chyby polí a období exportu.
+- Znovu ověřeno založení výdaje s přílohou, upload/filtrování/úprava/smazání pojištění, skutečné stažení originálních bajtů přílohy a CCS PDF, změna příjemce, řidičovy úkoly a navigace Vedení.
+- Úmyslná chyba zápisu přílohy do IndexedDB následovaná opakováním skončila právě jedním výdajem a jednou přílohou. Chybějící/neplatná účtenka zobrazila chybu u souboru a nevytvořila tankování. Ověřena horní středová pozice toastu.
+- Nové doplňkové funkční scénáře prošly samostatně při šířkách 1440 i 390 px: založení a editace jediného servisního kontaktu; založení CCS karty, přiřazení časové vazby k vozidlu, změna tolerance a deaktivace; změna svěřeného řidiče, ukončení přidělení, správný výchozí filtr a zobrazení historie z detailu vozidla i řidiče. Hodnoty byly po reloadu ověřeny v UI i u CCS karty v uložených datech.
+- Čerstvě sestavené produkční preview znovu prošlo přímými SPA cestami, založením vozidla, reloadem a detailem, výchozím nákladovým přehledem a skutečným stažením XLSX.
+
+V otestovaných scénářích nebyla nalezena rozbitá funkce ani běhová chyba prohlížeče. Všechna provozní data byla fiktivní a izolovaná v dočasných kontextech prohlížeče. Výsledek se týká lokálního adaptéru a testovaného HTTP kontraktu; ostrý backend, Google Sheets, OCR, e-maily, Make a nasazení nebyly ověřovány. Mobilní scénáře používají Chromium s rozměry telefonu, nikoli fyzické zařízení.
+
+## 30. 10. 2026 — Cílená kontrola odstranění prvků detailu vozidla
+
+Prověřeno nové zadání omezené na detail vozidla na větvi `codex/ux-refinements`, commit `b1be20a`. Všechny požadované prvky již byly odstraněné; žádné další změny aplikačního kódu, textů, barev, rozložení nebo stylů nebyly potřeba.
+
+- `src/features/fleet.tsx`, `VehiclePage`: není záložka Pojištění a termíny ani její obsah, tlačítka Upravit provozní údaj STK / Přidat pojištění / termín, hlavičkový upload STK, hlášení závady v záložce Závady a servis ani zadání tankování v záložce Tankování a náklady. Původní cesta záložky `terms` zobrazí existující stav nedostupné části detailu.
+- `ServicePlan` ve stejném souboru: chybí Přiřadit šablonu i Zaznamenat provedení včetně jejich obrazovkových handlerů. Stávající úprava individuálního plánu (tužka v řádku) a výběr šablony v editoru jsou zachované.
+- Zachována současná akce Upravit informace o vozidle. `DocumentList`, `useEditors`, `useUpload`, datové modely a sdílené/API příkazy `plan.apply` / `plan.complete` zůstaly nedotčené; slouží i dalším místům nebo kompatibilitě existujícího kontraktu. Upload STK v Dokumentech a při přidávání vozidla není hlavičková akce detailu a nebyl odstraňován.
+- Lint, typecheck, všech 43 testů v 11 souborech a produkční build prošly. Zůstává existující upozornění Vite na velké chunky.
+- Chromium 1440 px a 390 px s izolovanými fiktivními daty ověřilo nepřítomnost všech uvedených prvků na dotčených záložkách, zachovanou úpravu vozidla/plánu a výběr šablony. Dokumenty prošly skutečným nahráním pojištění, reloadem, otevřením náhledu a stažením originálu se shodnými bajty; bez běhových chyb.
+
+Nově se nic dalšího neodstraňovalo. Nejasná místa nevyžadující další zásah nebyla zjištěna. Ověření se týká lokálního adaptéru; externí integrace a veřejné nasazení nebyly testovány ani měněny.

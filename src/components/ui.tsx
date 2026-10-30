@@ -1,4 +1,14 @@
 import {
+  Children,
+  Fragment,
+  cloneElement,
+  createContext,
+  isValidElement,
+  useContext,
+  useId,
+  type InputHTMLAttributes,
+  type LabelHTMLAttributes,
+  type ReactElement,
   useEffect,
   useRef,
   useState,
@@ -7,7 +17,14 @@ import {
   type FormEvent,
 } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, Inbox, X, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Inbox,
+  X,
+  Search,
+  ChevronDown,
+} from "lucide-react";
 import { z } from "zod";
 import { DomainError } from "../domain/rules";
 import { normalize } from "../lib/format";
@@ -18,6 +35,7 @@ export function Button({
   danger = false,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
+  ref?: React.Ref<HTMLButtonElement>;
   primary?: boolean;
   danger?: boolean;
 }) {
@@ -106,7 +124,6 @@ export function PageHead({
   return (
     <div className="page-head">
       <div>
-        <div className="eyebrow">PRACOVNÍ PROSTOR</div>
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
@@ -303,6 +320,7 @@ export function Form({
   onSubmit,
   children,
   submit = "Uložit",
+  danger = false,
   onDirty,
 }: {
   fields: FieldSpec[];
@@ -310,8 +328,13 @@ export function Form({
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
   children?: ReactNode;
   submit?: string;
+  danger?: boolean;
   onDirty?: (dirty: boolean) => void;
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const hasField = (key: string) =>
+    fields.some((f) => f.key === key) ||
+    !!formRef.current?.elements.namedItem(key);
   const [errors, setErrors] = useState<Record<string, string>>({}),
     [pending, setPending] = useState(false);
   const [failure, setFailure] = useState("");
@@ -320,6 +343,7 @@ export function Form({
     if (pending) return;
     setErrors({});
     setFailure("");
+    const invalid = nativeFieldErrors(e.currentTarget);
     const fd = new FormData(e.currentTarget);
     const values: Record<string, unknown> = {};
     try {
@@ -331,10 +355,14 @@ export function Form({
             ? Number(raw.replace(/\s/g, "").replace(",", "."))
             : null;
           if (n !== null && !Number.isFinite(n))
-            throw new DomainError("Zadejte platné číslo.", f.key);
+            invalid[f.key] = "Zadejte platné číslo.";
           values[f.key] =
             f.type === "money" && n !== null ? Math.round(n * 100) : n;
         } else values[f.key] = raw;
+      }
+      if (Object.keys(invalid).length) {
+        setErrors(invalid);
+        return;
       }
       setPending(true);
       await onSubmit(values);
@@ -344,16 +372,26 @@ export function Form({
         const next: Record<string, string> = {};
         const general: string[] = [];
         for (const issue of error.issues) {
-          const key = String(issue.path[0]);
-          if (fields.some((f) => f.key === key)) next[key] = issue.message;
-          else general.push(issue.path.join(".") + ": " + issue.message);
+          const key = issue.path.join(".");
+          if (hasField(key)) next[key] = issue.message;
+          else general.push(issue.message);
         }
         setErrors(next);
         if (general.length) setFailure(general.join(" · "));
+      } else if (error instanceof DomainError && error.fieldErrors) {
+        const next: Record<string, string> = {};
+        const general: string[] = [];
+        for (const [key, message] of Object.entries(error.fieldErrors)) {
+          if (hasField(key)) next[key] = message;
+          else general.push(message);
+        }
+        setErrors(next);
+        if (general.length || !Object.keys(next).length)
+          setFailure(general.join(" · ") || error.message);
       } else if (
         error instanceof DomainError &&
         error.field &&
-        fields.some((f) => f.key === error.field)
+        hasField(error.field)
       )
         setErrors({ [error.field]: error.message });
       else
@@ -363,89 +401,106 @@ export function Form({
     }
   }
   return (
-    <form onSubmit={save} onChange={() => onDirty?.(true)}>
-      <div className="form-grid">
-        {fields.map((f) => {
-          const value = initial[f.key] ?? f.initial ?? "";
-          const id = "field-" + f.key;
-          const common = {
-            name: f.key,
-            id,
-            required: f.required,
-            readOnly: f.readOnly,
-            "aria-invalid": !!errors[f.key],
-            "aria-describedby":
-              f.help || errors[f.key] ? id + "-hint" : undefined,
-          };
-          return (
-            <div
-              key={f.key}
-              className={"field " + (f.type === "textarea" ? "full" : "")}
-            >
-              <label htmlFor={id}>
-                {f.label}
-                {f.required ? " *" : ""}
-              </label>
-              {f.type === "select" ? (
-                <select {...common} defaultValue={String(value)}>
-                  {!f.required && (
-                    <option value="">Není doloženo / žádné</option>
-                  )}
-                  {f.required && (
-                    <option value="" disabled>
-                      Vyberte…
-                    </option>
-                  )}
-                  {f.options?.map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              ) : f.type === "textarea" ? (
-                <textarea {...common} defaultValue={String(value)} />
-              ) : f.type === "checkbox" ? (
-                <input {...common} type="checkbox" defaultChecked={!!value} />
-              ) : (
-                <input
-                  {...common}
-                  type={
-                    f.type === "number" || f.type === "money"
-                      ? "text"
-                      : f.type === "datetime"
-                        ? "datetime-local"
-                        : f.type || "text"
-                  }
-                  inputMode={
-                    f.type === "number" || f.type === "money"
-                      ? "decimal"
-                      : undefined
-                  }
-                  defaultValue={
-                    f.type === "money" && typeof value === "number"
-                      ? value / 100
-                      : String(value)
-                  }
-                />
-              )}
-              <small
-                id={id + "-hint"}
-                className={errors[f.key] ? "field-error" : ""}
+    <FieldErrors.Provider value={errors}>
+      <form
+        ref={formRef}
+        noValidate
+        onSubmit={save}
+        onChange={() => onDirty?.(true)}
+      >
+        <div className="form-grid">
+          {fields.map((f) => {
+            const value = initial[f.key] ?? f.initial ?? "";
+            const id = "field-" + f.key;
+            const common = {
+              name: f.key,
+              id,
+              required: f.required,
+              readOnly: f.readOnly,
+              "aria-invalid": !!errors[f.key],
+              "aria-describedby":
+                f.help || errors[f.key] ? id + "-hint" : undefined,
+            };
+            return (
+              <div
+                key={f.key}
+                className={"field " + (f.type === "textarea" ? "full" : "")}
               >
-                {errors[f.key] || f.help}
-              </small>
-            </div>
-          );
-        })}
-      </div>
-      {children}
-      {failure && <Notice error>{failure}</Notice>}
-      <div className="form-actions">
-        <Button primary type="submit" disabled={pending}>
-          {pending ? "Ukládání…" : submit}
-        </Button>
-      </div>
-    </form>
+                <label htmlFor={id}>
+                  {f.label}
+                  {f.required && (
+                    <span className="required-mark" aria-hidden="true">
+                      {" "}
+                      *
+                    </span>
+                  )}
+                </label>
+                {f.type === "select" ? (
+                  <select {...common} defaultValue={String(value)}>
+                    {!f.required && (
+                      <option value="">Není doloženo / žádné</option>
+                    )}
+                    {f.required && (
+                      <option value="" disabled>
+                        Vyberte…
+                      </option>
+                    )}
+                    {f.options?.map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                ) : f.type === "textarea" ? (
+                  <textarea {...common} defaultValue={String(value)} />
+                ) : f.type === "checkbox" ? (
+                  <input {...common} type="checkbox" defaultChecked={!!value} />
+                ) : (
+                  <input
+                    {...common}
+                    type={
+                      f.type === "number" || f.type === "money"
+                        ? "text"
+                        : f.type === "datetime"
+                          ? "datetime-local"
+                          : f.type || "text"
+                    }
+                    inputMode={
+                      f.type === "number" || f.type === "money"
+                        ? "decimal"
+                        : undefined
+                    }
+                    defaultValue={
+                      f.type === "money" && typeof value === "number"
+                        ? value / 100
+                        : String(value)
+                    }
+                  />
+                )}
+                <small
+                  id={id + "-hint"}
+                  className={errors[f.key] ? "field-error" : ""}
+                >
+                  {errors[f.key] || f.help}
+                </small>
+              </div>
+            );
+          })}
+        </div>
+        {children}
+        {failure && <Notice error>{failure}</Notice>}
+        <div className="form-actions">
+          <Button
+            primary={!danger}
+            danger={danger}
+            type="submit"
+            disabled={pending}
+          >
+            {pending ? "Ukládání…" : submit}
+          </Button>
+        </div>
+      </form>
+    </FieldErrors.Provider>
   );
 }
 export type Column<T> = {
@@ -468,6 +523,7 @@ export function DataTable<T extends { id: string }>({
   filters = [],
   emptyText = "Žádný odpovídající záznam",
   prefix = "",
+  toolbarActions,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -476,6 +532,7 @@ export function DataTable<T extends { id: string }>({
   filters?: Filter<T>[];
   emptyText?: string;
   prefix?: string;
+  toolbarActions?: ReactNode;
 }) {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -554,6 +611,9 @@ export function DataTable<T extends { id: string }>({
           </select>
         ))}
         <span className="muted">{filtered.length} výsledků</span>
+        {toolbarActions && (
+          <div className="toolbar-actions">{toolbarActions}</div>
+        )}
       </div>
       <div className="table-scroll">
         <table>
@@ -632,25 +692,21 @@ export function DataTable<T extends { id: string }>({
                 ))}
               </tr>
             ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={columns.length}>
-                  <Empty
-                    title={
-                      rows.length ? emptyText : "Evidence je zatím prázdná"
-                    }
-                    text={
-                      rows.length
-                        ? "Změňte hledání nebo filtry."
-                        : "Uložené záznamy se zobrazí zde."
-                    }
-                  />
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
+      {!filtered.length && (
+        <div className="table-empty">
+          <Empty
+            title={rows.length ? emptyText : "Evidence je zatím prázdná"}
+            text={
+              rows.length
+                ? "Změňte hledání nebo filtry."
+                : "Uložené záznamy se zobrazí zde."
+            }
+          />
+        </div>
+      )}
       <div className="pagination">
         <span>
           {filtered.length
@@ -677,6 +733,300 @@ export function DataTable<T extends { id: string }>({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function HistorySwitch({
+  checked,
+  onChange,
+  label = "Zobrazit i historické",
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  label?: string;
+}) {
+  return (
+    <label className="history-switch">
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+export function ViewToggle({
+  value,
+  onChange,
+  items,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  items: { value: string; label: string; icon?: ReactNode }[];
+}) {
+  return (
+    <div className="view-toggle" role="group" aria-label="Zobrazení">
+      {items.map((i) => (
+        <button
+          key={i.value}
+          type="button"
+          aria-pressed={value === i.value}
+          onClick={() => onChange(i.value)}
+        >
+          {i.icon}
+          {i.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const FieldErrors = createContext<Record<string, string>>({});
+export function Field({
+  children,
+  error: explicitError,
+  ...props
+}: LabelHTMLAttributes<HTMLLabelElement> & { error?: string }) {
+  const errors = useContext(FieldErrors);
+  const generated = useId();
+  let name = generated;
+  const controls = Children.map(children, (child) => {
+    if (
+      !isValidElement(child) ||
+      !["input", "select", "textarea"].includes(String(child.type))
+    )
+      return child;
+    const el = child as ReactElement<InputHTMLAttributes<HTMLInputElement>>;
+    name = el.props.name || generated;
+    return (
+      <Fragment key={name}>
+        {el.props.required && (
+          <span className="required-mark" aria-hidden="true">
+            {" "}
+            *
+          </span>
+        )}
+        {cloneElement(el, {
+          name,
+          id: el.props.id || generated,
+          "aria-invalid": !!(explicitError || errors[name]),
+          "aria-describedby":
+            explicitError || errors[name]
+              ? `${generated}-error`
+              : el.props["aria-describedby"],
+        })}
+      </Fragment>
+    );
+  });
+  return (
+    <label {...props} className={`${props.className || ""} validated-field`}>
+      {controls}
+      {(explicitError || errors[name]) && (
+        <small id={`${generated}-error`} className="field-error" role="alert">
+          {explicitError || errors[name]}
+        </small>
+      )}
+    </label>
+  );
+}
+function nativeFieldErrors(form: HTMLFormElement) {
+  const errors: Record<string, string> = {};
+  for (const el of Array.from(form.elements)) {
+    if (
+      !(
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLSelectElement ||
+        el instanceof HTMLTextAreaElement
+      ) ||
+      !el.name ||
+      el.disabled ||
+      el.validity.valid
+    )
+      continue;
+    const label =
+      el.labels?.[0]?.textContent?.split("*")[0]?.trim() || "Toto pole";
+    errors[el.name] = el.validity.valueMissing
+      ? `Vyplňte pole „${label}“.`
+      : el.validity.typeMismatch
+        ? "Zadejte platnou e-mailovou adresu."
+        : el.validity.rangeUnderflow
+          ? `Zadejte hodnotu alespoň ${el instanceof HTMLInputElement ? el.min : ""}.`
+          : "Zadejte platnou hodnotu.";
+  }
+  return errors;
+}
+export function ValidatedForm({
+  onSubmit,
+  children,
+  ...props
+}: React.ComponentProps<"form">) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  return (
+    <FieldErrors.Provider value={errors}>
+      <form
+        {...props}
+        noValidate
+        onSubmit={(e) => {
+          const next = nativeFieldErrors(e.currentTarget);
+          setErrors(next);
+          if (Object.keys(next).length) e.preventDefault();
+          else onSubmit?.(e);
+        }}
+      >
+        {children}
+      </form>
+    </FieldErrors.Provider>
+  );
+}
+
+export function FilePicker({
+  files,
+  onChange,
+  label = "Vybrat soubory",
+  accept = "application/pdf,image/jpeg,image/png",
+  multiple = true,
+  camera = false,
+  name = "files",
+  error,
+}: {
+  files: File[];
+  onChange: (files: File[]) => void;
+  label?: string;
+  accept?: string;
+  multiple?: boolean;
+  camera?: boolean;
+  name?: string;
+  error?: string;
+}) {
+  const errors = useContext(FieldErrors);
+  const id = useId();
+  const failure = error || errors[name];
+  const ref = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="file-picker">
+      <div
+        className="upload-zone"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const next = Array.from(e.dataTransfer.files);
+          onChange(multiple ? next : next.slice(0, 1));
+        }}
+      >
+        <span>Přetáhněte sem soubor nebo jej vyberte.</span>
+        <Button onClick={() => ref.current?.click()}>{label}</Button>
+        <input
+          ref={ref}
+          name={name}
+          aria-invalid={!!failure}
+          aria-describedby={failure ? `${id}-error` : undefined}
+          className="visually-hidden"
+          aria-label={label}
+          type="file"
+          accept={accept}
+          multiple={multiple}
+          onChange={(e) => onChange(Array.from(e.target.files || []))}
+        />
+      </div>
+      {camera && (
+        <>
+          <Button onClick={() => cameraRef.current?.click()}>
+            Vyfotit účtenku
+          </Button>
+          <input
+            className="visually-hidden"
+            ref={cameraRef}
+            type="file"
+            aria-label="Vyfotit účtenku"
+            accept="image/jpeg,image/png"
+            capture="environment"
+            onChange={(e) => onChange(Array.from(e.target.files || []))}
+          />
+        </>
+      )}
+      {failure && (
+        <small className="field-error" id={`${id}-error`} role="alert">
+          {failure}
+        </small>
+      )}
+      {!!files.length && (
+        <ul className="selected-files">
+          {files.map((f, i) => (
+            <li key={`${f.name}-${i}`}>
+              {f.name} · {Math.ceil(f.size / 1024)} kB
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export type AddChoice = { label: string; action: () => void; icon?: ReactNode };
+export function ChoiceButton({
+  label,
+  icon,
+  choices,
+}: {
+  label: string;
+  icon?: ReactNode;
+  choices: AddChoice[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  return (
+    <div className="choice-button" ref={ref}>
+      <Button
+        ref={trigger}
+        primary
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+      >
+        {icon}
+        {label}
+        <ChevronDown size={17} />
+      </Button>
+      {open && (
+        <div id={id} className="choice-menu" role="group" aria-label={label}>
+          {choices.map((c) => (
+            <Button
+              key={c.label}
+              onClick={() => {
+                setOpen(false);
+                c.action();
+              }}
+            >
+              {c.icon}
+              {c.label}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

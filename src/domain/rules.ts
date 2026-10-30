@@ -5,6 +5,7 @@ export class DomainError extends Error {
     message: string,
     public field?: string,
     public status = 422,
+    public fieldErrors?: Record<string, string>,
   ) {
     super(message);
     this.name = "DomainError";
@@ -284,9 +285,9 @@ export function deadlines(s: Workspace, now = new Date()) {
         : x.state,
     owner: x.responsible,
     path: x.vehicleId
-      ? `/vehicles/${x.vehicleId}/terms`
+      ? `/vehicles/${x.vehicleId}/documents`
       : x.driverId
-        ? `/drivers/${x.driverId}/licences`
+        ? `/drivers/${x.driverId}/overview`
         : "/deadlines",
     derived: false,
   }));
@@ -346,7 +347,7 @@ export function deadlines(s: Workspace, now = new Date()) {
         km: null,
         state: v.stkUntil < today() ? "Vyžaduje řešení" : "Plánováno",
         owner: "Fleet manažer",
-        path: `/vehicles/${v.id}/terms`,
+        path: `/vehicles/${v.id}/documents`,
         derived: true,
       });
   for (const d of s.drivers)
@@ -359,7 +360,7 @@ export function deadlines(s: Workspace, now = new Date()) {
           km: null,
           state: l.validUntil < today() ? "Vyžaduje řešení" : "Plánováno",
           owner: d.name,
-          path: `/drivers/${d.id}/licences`,
+          path: `/drivers/${d.id}/overview`,
           derived: true,
         });
   for (const plan of s.plans)

@@ -9,6 +9,7 @@ import {
   DataTable,
   Dialog,
   Empty,
+  Field,
   Notice,
   PageHead,
   Panel,
@@ -43,30 +44,32 @@ export function ScopeFilters({
   scope,
   change,
   costs = true,
+  errors = {},
 }: {
   scope: Scope;
   change: (key: string, value: string) => void;
   costs?: boolean;
+  errors?: Record<string, string>;
 }) {
   const { s } = useFleet();
   return (
     <div className="report-filters">
-      <label>
+      <Field error={errors.from}>
         Od
         <input
           type="date"
           value={scope.from}
           onChange={(e) => change("from", e.target.value)}
         />
-      </label>
-      <label>
+      </Field>
+      <Field error={errors.to}>
         Do
         <input
           type="date"
           value={scope.to}
           onChange={(e) => change("to", e.target.value)}
         />
-      </label>
+      </Field>
       <label>
         Vozidlo
         <select
@@ -392,6 +395,7 @@ export function ExportDialog({
     [format, setFormat] = useState("pdf"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const isReport = kind === "report";
   const change = (key: string, value: string) =>
     setScope((x) => ({
@@ -406,7 +410,12 @@ export function ExportDialog({
       onClose={close}
     >
       <div className="dialog-body">
-        <ScopeFilters scope={scope} change={change} costs={isReport} />
+        <ScopeFilters
+          scope={scope}
+          change={change}
+          costs={isReport}
+          errors={fieldErrors}
+        />
         {!isReport && (
           <>
             <label>
@@ -478,10 +487,18 @@ export function ExportDialog({
             primary
             disabled={busy || !columns.length}
             onClick={async () => {
+              const next: Record<string, string> = {};
+              if (!scope.from) next.from = "Vyplňte počáteční datum.";
+              if (!scope.to) next.to = "Vyplňte koncové datum.";
+              if (scope.from && scope.to && scope.from > scope.to) {
+                next.from = "Počáteční datum musí být před koncovým.";
+                next.to = "Koncové datum musí být po počátečním.";
+              }
+              setFieldErrors(next);
+              if (Object.keys(next).length) return;
               setBusy(true);
               setError("");
               try {
-                if (scope.from > scope.to) throw new Error("Opravte období.");
                 if (isReport && actor.role !== "Vedení")
                   throw new Error("Report smí exportovat pouze vedení.");
                 let data: ExportData;
@@ -590,7 +607,7 @@ export function ExportDialog({
               }
             }}
           >
-            {busy ? "Připravuji soubor…" : "Stáhnout " + format.toUpperCase()}
+            {busy ? "Připravuji soubor…" : "Stáhnout"}
           </Button>
         </div>
         <p className="muted">

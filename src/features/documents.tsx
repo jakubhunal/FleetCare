@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { FileText, Upload, Download, Trash2 } from "lucide-react";
+import { Upload, Download, Trash2, Pencil } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import type { Document } from "../domain/models";
 import {
@@ -10,6 +10,11 @@ import {
   DataTable,
   Dialog,
   Empty,
+  Form,
+  HistorySwitch,
+  Field,
+  FilePicker,
+  ValidatedForm,
   Notice,
   PageHead,
 } from "../components/ui";
@@ -51,12 +56,7 @@ export function UploadDialog({
       dirty={!!selected.length}
     >
       <div className="dialog-body">
-        <Notice>
-          Originál bude uložen do úložiště. Automatické vytěžení vyžaduje
-          připojenou službu. Pro extrakci platí limit 5 MB, pro běžnou přílohu
-          20 MB.
-        </Notice>
-        <form
+        <ValidatedForm
           onSubmit={async (e) => {
             e.preventDefault();
             if (pending) return;
@@ -82,7 +82,7 @@ export function UploadDialog({
           }}
         >
           <div className="form-grid">
-            <label>
+            <Field>
               Typ dokumentu
               <select
                 value={docType}
@@ -92,56 +92,32 @@ export function UploadDialog({
                   <option key={x}>{x}</option>
                 ))}
               </select>
-            </label>
-            <label>
+            </Field>
+            <Field>
               Platnost do (metadata)
               <input
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValid(e.target.value)}
               />
-            </label>
-            <label>
+            </Field>
+            <Field>
               Splatnost (metadata)
               <input
                 type="date"
                 value={dueAt}
                 onChange={(e) => setDue(e.target.value)}
               />
-            </label>
+            </Field>
           </div>
-          <label className="upload-zone">
-            <Upload size={30} />
-            <strong>Vyberte PDF, JPG nebo PNG</strong>
-            <span>
-              Až {fileLimits.maxFiles} souborů. Více stran lze nahrát společně.
-            </span>
-            <input
-              aria-label="Vybrat soubory"
-              type="file"
-              accept="application/pdf,image/jpeg,image/png"
-              multiple
-              onChange={(e) => setSelected(Array.from(e.target.files || []))}
-            />
-          </label>
-          {docType === "Účtenka" && (
-            <label className="camera-input">
-              Vyfotit účtenku
-              <input
-                aria-label="Vyfotit účtenku"
-                type="file"
-                accept="image/jpeg,image/png"
-                capture="environment"
-                onChange={(e) => setSelected(Array.from(e.target.files || []))}
-              />
-            </label>
-          )}
-          {selected.map((f, i) => (
-            <p key={i}>
-              <FileText size={16} /> {f.name} · {number(f.size / 1024, "kB")}
-            </p>
-          ))}
-          {error && <Notice error>{error}</Notice>}
+          <FilePicker
+            files={selected}
+            error={error}
+            onChange={setSelected}
+            label="Vybrat soubory"
+            camera={docType === "Účtenka"}
+          />
+          <small>Až {fileLimits.maxFiles} souborů. PDF, JPG nebo PNG.</small>
           <div className="form-actions">
             <Button
               primary
@@ -151,7 +127,7 @@ export function UploadDialog({
               {pending ? "Ukládání…" : "Uložit dokumenty"}
             </Button>
           </div>
-        </form>
+        </ValidatedForm>
       </div>
     </Dialog>
   );
@@ -178,11 +154,13 @@ export function DocumentList({
   ownerId,
   vehicleId,
   add = true,
+  relatedOwners = [],
 }: {
   ownerType: Document["ownerType"];
   ownerId: string;
   vehicleId?: string;
   add?: boolean;
+  relatedOwners?: { ownerType: Document["ownerType"]; ownerId: string }[];
 }) {
   const { s, show, close, run } = useFleet(),
     open = useUpload();
@@ -191,34 +169,45 @@ export function DocumentList({
     (d) =>
       !d.deletedAt &&
       ((d.ownerType === ownerType && d.ownerId === ownerId) ||
-        (ownerType === "vehicle" && d.vehicleId === ownerId)) &&
+        (ownerType === "vehicle" && d.vehicleId === ownerId) ||
+        relatedOwners.some(
+          (o) => o.ownerType === d.ownerType && o.ownerId === d.ownerId,
+        )) &&
       (historical ||
         !d.validUntil ||
         d.validUntil >= new Date().toISOString().slice(0, 10)),
   );
   return (
     <>
-      <div className="section-actions">
-        {add && (
-          <Button primary onClick={() => open(ownerType, ownerId, vehicleId)}>
-            <Upload size={17} />
-            Přidat dokument
-          </Button>
-        )}
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={historical}
-            onChange={(e) => setHistorical(e.target.checked)}
-          />
-          Zobrazit i historické
-        </label>
-      </div>
       <DataTable
+        toolbarActions={
+          <>
+            {add && (
+              <Button
+                primary
+                onClick={() => open(ownerType, ownerId, vehicleId)}
+              >
+                <Upload size={17} />
+                Přidat dokument
+              </Button>
+            )}
+            <HistorySwitch checked={historical} onChange={setHistorical} />
+          </>
+        }
         prefix={`documents-${ownerType}-${ownerId}.`}
         rows={docs}
         path={(d) => `/documents/${d.id}`}
         search={(d) => d.name + " " + d.type}
+        filters={[
+          {
+            key: "type",
+            label: "Všechny typy dokumentů",
+            options: Array.from(new Set(docs.map((d) => d.type))).map(
+              (type) => [type, type],
+            ),
+            value: (d) => d.type,
+          },
+        ]}
         columns={[
           {
             key: "name",
@@ -302,7 +291,7 @@ export function DocumentList({
 }
 export function DocumentPage() {
   const { id } = useParams();
-  const { s, actor, repo, show } = useFleet();
+  const { s, actor, repo, show, close, run } = useFleet();
   const doc = s.documents.find((d) => d.id === id && !d.deletedAt);
   const client = useQueryClient();
   const job = useQuery({
@@ -351,12 +340,42 @@ export function DocumentPage() {
         title={doc.name}
         subtitle={doc.type + " · " + date(doc.uploadedAt)}
         actions={
-          url && (
-            <a className="btn" href={url} download={doc.name}>
-              <Download size={17} />
-              Stáhnout originál
-            </a>
-          )
+          <>
+            {(actor.role !== "Řidič" ||
+              (doc.ownerType === "driver" &&
+                doc.ownerId === actor.driverId)) && (
+              <>
+                <Button onClick={() => show(<EditDocument doc={doc} />)}>
+                  <Pencil size={17} />
+                  Upravit
+                </Button>
+                <Button
+                  danger
+                  onClick={() =>
+                    show(
+                      <Confirm
+                        title="Smazat dokument"
+                        description={`Opravdu smazat dokument „${doc.name}“?`}
+                        onDone={close}
+                        action={() =>
+                          run({ type: "document.delete", id: doc.id })
+                        }
+                      />,
+                    )
+                  }
+                >
+                  <Trash2 size={17} />
+                  Smazat
+                </Button>
+              </>
+            )}
+            {url && (
+              <a className="btn" href={url} download={doc.name}>
+                <Download size={17} />
+                Stáhnout
+              </a>
+            )}
+          </>
         }
       />
       <div className="document-layout">
@@ -443,7 +462,7 @@ function LinkDocument({ id }: { id: string }) {
   return (
     <Dialog title="Připojit STK k vozidlu" onClose={close}>
       <div className="dialog-body">
-        <label>
+        <Field>
           Vozidlo
           <select value={v} onChange={(e) => setV(e.target.value)}>
             <option value="">Vyberte…</option>
@@ -453,7 +472,7 @@ function LinkDocument({ id }: { id: string }) {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
         {err && <Notice error>{err}</Notice>}
         <div className="form-actions">
           <Button
@@ -471,6 +490,37 @@ function LinkDocument({ id }: { id: string }) {
             Připojit dokument
           </Button>
         </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function EditDocument({ doc }: { doc: Document }) {
+  const { run, close } = useFleet();
+  const [dirty, setDirty] = useState(false);
+  return (
+    <Dialog title="Upravit dokument" onClose={close} dirty={dirty}>
+      <div className="dialog-body">
+        <Form
+          fields={[
+            { key: "name", label: "Název", required: true },
+            { key: "validUntil", label: "Platnost do", type: "date" },
+            { key: "dueAt", label: "Splatnost", type: "date" },
+          ]}
+          initial={doc}
+          onDirty={setDirty}
+          onSubmit={async (v) => {
+            await run({
+              type: "document.update",
+              id: doc.id,
+              version: doc.version,
+              name: String(v.name),
+              validUntil: String(v.validUntil) || null,
+              dueAt: String(v.dueAt) || null,
+            });
+            close();
+          }}
+        />
       </div>
     </Dialog>
   );
