@@ -63,11 +63,16 @@ export class HttpRepository implements Repository {
       });
       if (!response.ok) {
         let message = `API vrátilo chybu ${response.status}.`;
+        let fieldErrors: Record<string, string> | undefined;
         try {
           const body = z
-            .object({ message: z.string().optional() })
+            .object({
+              message: z.string().optional(),
+              fieldErrors: z.record(z.string(), z.string()).optional(),
+            })
             .parse(await response.json());
           message = body.message || message;
+          fieldErrors = body.fieldErrors;
         } catch {
           /* Non-JSON gateway errors retain HTTP status. */
         }
@@ -75,7 +80,7 @@ export class HttpRepository implements Repository {
           message = "Konflikt verze: obnovte detail před opakováním změny.";
         if (response.status === 429)
           message = "Služba omezila počet požadavků. Zkuste operaci později.";
-        throw new DomainError(message, undefined, response.status);
+        throw new DomainError(message, undefined, response.status, fieldErrors);
       }
       return response;
     } catch (error) {

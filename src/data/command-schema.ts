@@ -77,12 +77,26 @@ export const commandSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("notification.retry"), id: z.string() }),
   z.object({
+    type: z.literal("notification.recipient"),
+    id: z.string(),
+    version: z.number().int().positive(),
+    email: z.email(),
+  }),
+  z.object({
     type: z.literal("ccs.resolve"),
     transactionId: z.string(),
     fuelId: z.string().nullable(),
     amountMinor: z.number().int().nonnegative(),
     reason: z.string().min(1),
     version: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal("document.update"),
+    id: z.string(),
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1),
+    validUntil: z.iso.date().nullable(),
+    dueAt: z.iso.date().nullable(),
   }),
   z.object({ type: z.literal("document.delete"), id: z.string() }),
   z.object({
