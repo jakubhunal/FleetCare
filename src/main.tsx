@@ -15,7 +15,12 @@ import { Layout } from "./app/layout";
 import { roles, type Actor } from "./domain/models";
 import type { Repository } from "./data/contracts";
 import { Empty, Notice } from "./components/ui";
-import { Dashboard, DeadlinesPage, DriverWorkspace } from "./features/overview";
+import {
+  Dashboard,
+  DeadlinesPage,
+  DeadlinePage,
+  DriverWorkspace,
+} from "./features/overview";
 import {
   DriverPage,
   DriversPage,
@@ -23,7 +28,6 @@ import {
   VehiclesPage,
 } from "./features/fleet";
 import {
-  AssignmentPage,
   FaultPage,
   FaultsPage,
   OrderPage,
@@ -105,7 +109,6 @@ function App() {
               <Route path="/drivers" element={<DriversPage />} />
               <Route path="/drivers/:id/:tab?" element={<DriverPage />} />
               <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/orders/:id/assign" element={<AssignmentPage />} />
               <Route path="/trips" element={<TripsPage />} />
               <Route path="/faults" element={<FaultsPage />} />
               <Route path="/costs/:tab?" element={<CostsPage />} />
@@ -113,6 +116,7 @@ function App() {
               <Route path="/statements/:id" element={<StatementPage />} />
               <Route path="/transactions/:id" element={<TransactionPage />} />
               <Route path="/deadlines" element={<DeadlinesPage />} />
+              <Route path="/deadlines/:id" element={<DeadlinePage />} />
               <Route path="/settings/:tab?" element={<SettingsPage />} />
             </>
           ) : (

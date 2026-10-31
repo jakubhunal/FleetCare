@@ -527,6 +527,22 @@ export function applyCommand(
       state: "not_configured",
       reason: "E-mailová služba není připojena.",
     });
+  } else if (c.type === "notification.recipient") {
+    manager(actor);
+    const n = find(s, "notifications", c.id);
+    version(n.version, c.version);
+    ensure(
+      !["sent", "sending"].includes(n.state),
+      "Odeslaný nebo odesílaný požadavek nelze měnit.",
+    );
+    const email = settingsSchema.shape.managerEmail.parse(c.email);
+    ensure(email, "Vyplňte e-mail příjemce.", "email");
+    Object.assign(n, touch(n), {
+      email,
+      recipientId: null,
+      state: "not_configured",
+      reason: "Příjemce změněn. E-mailová služba není připojena.",
+    });
   } else if (c.type === "notification.retry") {
     manager(actor);
     const n = find(s, "notifications", c.id);
@@ -578,15 +594,22 @@ export function applyCommand(
       state: "Vyřešeno",
       resolution: c.reason,
     });
-  } else if (c.type === "document.delete") {
+  } else if (c.type === "document.update" || c.type === "document.delete") {
     const d = find(s, "documents", c.id);
-    ensure(
-      d.ownerType === "driver",
-      "Mazání je povoleno pouze u osobních dokumentů.",
-    );
+    ensure(!d.deletedAt, "Dokument již byl smazán.");
     if (actor.role === "Řidič")
-      ensure(d.ownerId === actor.driverId, "Cizí dokument není dostupný.");
-    Object.assign(d, touch(d), { deletedAt: new Date().toISOString() });
+      ensure(
+        d.ownerType === "driver" && d.ownerId === actor.driverId,
+        "Cizí dokument nelze měnit.",
+      );
+    if (c.type === "document.update") {
+      version(d.version, c.version);
+      const values = collections.documents
+        .pick({ name: true, validUntil: true, dueAt: true })
+        .parse(c);
+      ensure(values.name.trim(), "Vyplňte název dokumentu.", "name");
+      Object.assign(d, touch(d), values);
+    } else Object.assign(d, touch(d), { deletedAt: new Date().toISOString() });
   } else if (c.type === "document.link") {
     manager(actor);
     const d = find(s, "documents", c.id);

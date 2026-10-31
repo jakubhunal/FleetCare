@@ -71,12 +71,26 @@ export type Command =
     }
   | { type: "notification.retry"; id: string }
   | {
+      type: "notification.recipient";
+      id: string;
+      version: number;
+      email: string;
+    }
+  | {
       type: "ccs.resolve";
       transactionId: string;
       fuelId: string | null;
       amountMinor: number;
       reason: string;
       version: number;
+    }
+  | {
+      type: "document.update";
+      id: string;
+      version: number;
+      name: string;
+      validUntil: string | null;
+      dueAt: string | null;
     }
   | { type: "document.delete"; id: string }
   | { type: "document.link"; id: string; vehicleId: string };

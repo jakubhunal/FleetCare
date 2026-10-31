@@ -1,7 +1,9 @@
+import { validateUpload } from "../data/uploads";
+import { DomainError } from "../domain/rules";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useFleet } from "../app/context";
-import { Dialog, Form, Notice } from "../components/ui";
+import { Dialog, FilePicker, Form, Notice } from "../components/ui";
 import { localTime, toUtc } from "../lib/format";
 export function FuelIntakeDialog({ vehicleId }: { vehicleId?: string }) {
   const { s, actor, run, upload, close } = useFleet(),
@@ -51,7 +53,20 @@ export function FuelIntakeDialog({ vehicleId }: { vehicleId?: string }) {
           }}
           submit="Uložit účtenku"
           onSubmit={async (values) => {
-            if (!files.length) throw new Error("Vyberte účtenku.");
+            try {
+              validateUpload({
+                ownerType: "fuel",
+                ownerId: id,
+                type: "Účtenka",
+                files,
+                idempotencyKey: id + "-file",
+              });
+            } catch (e) {
+              throw new DomainError(
+                e instanceof Error ? e.message : "Vyberte účtenku.",
+                "files",
+              );
+            }
             await run(
               {
                 type: "save",
@@ -79,29 +94,12 @@ export function FuelIntakeDialog({ vehicleId }: { vehicleId?: string }) {
             navigate(`/fuels/${id}`);
           }}
         >
-          <label className="upload-zone">
-            Účtenka PDF / JPG / PNG
-            <input
-              aria-label="Vybrat účtenku"
-              type="file"
-              accept="application/pdf,image/jpeg,image/png"
-              multiple
-              onChange={(e) => setFiles(Array.from(e.target.files || []))}
-            />
-          </label>
-          <label>
-            Vyfotit účtenku
-            <input
-              aria-label="Vyfotit účtenku"
-              type="file"
-              accept="image/jpeg,image/png"
-              capture="environment"
-              onChange={(e) => setFiles(Array.from(e.target.files || []))}
-            />
-          </label>
-          {files.map((f, i) => (
-            <p key={i}>{f.name}</p>
-          ))}
+          <FilePicker
+            files={files}
+            onChange={setFiles}
+            label="Vybrat účtenku"
+            camera
+          />
           {saved && (
             <Notice>
               Neúplné tankování je uloženo. Při chybě přílohy můžete nahrání

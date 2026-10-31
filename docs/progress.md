@@ -46,3 +46,107 @@
 ### Následná funkční kontrola na žádost uživatele
 
 Znovu ověřen commit `c25daef`: typecheck, lint, 38 testů a produkční build prošly. Dotčené obrazovky prošly kontrolami Chromium desktop/mobil. Navíc ověřena persistence úpravy servisního plánu, skutečný upload a stažení pojištění a import/otevření/stažení originálního CCS PDF. Výsledek a omezení jsou v `docs/verification.md`; nebyla nutná oprava aplikačního kódu. Záznam ověření je uložen na stejné pracovní větvi.
+
+- A1: Move order assignment into a suitable-candidates dialog — typecheck a lint prošly.
+
+- A2: Simplify fuel detail and show one action for CCS differences — typecheck a lint prošly.
+
+- A3: Add shared document editing deletion download and type filters — typecheck a lint prošly.
+
+- A4: Present vehicle service plans in a table with dialog-only templates — typecheck a lint prošly.
+
+- A5: Add deadline details and right-aligned list calendar controls — typecheck a lint prošly.
+
+- A6: Use assignment tables with history and vehicle identifiers — typecheck a lint prošly.
+
+- A7: Show accessible field-specific validation including repeated service items — typecheck a lint prošly.
+
+- A8: Upload an expense attachment directly from its creation form — typecheck a lint prošly.
+
+- A9: Set global body text to 16px and minimum small text to 14px — typecheck a lint prošly.
+
+- B1: Share table toolbars and consistent history switches — typecheck a lint prošly.
+
+- B2: Use a shared add-method dropdown for vehicles and fuel — typecheck a lint prošly.
+
+- B3: Use application file pickers for uploads and camera receipts — typecheck a lint prošly.
+
+- B4: Label the CCS PDF action while retaining one transaction table — typecheck a lint prošly.
+
+- B5: Make the cost overview the first and default costs tab — typecheck a lint prošly.
+
+- B6: Use a secondary edit action with a pencil on expense details — typecheck a lint prošly.
+
+- B7: Add a single-service Contacts tab and tabular CCS cards — typecheck a lint prošly.
+
+- B8: Add explicit recipient editing and secondary fault actions — typecheck a lint prošly.
+
+- B9: Move dashboard quick actions directly below the heading — typecheck a lint prošly.
+
+- B10: Position toast notifications at the top center — typecheck a lint prošly.
+
+- B11: Tabulate driver tasks and align driver table actions — typecheck a lint prošly.
+
+- C1: Remove informational banners while preserving actionable warnings — typecheck a lint prošly.
+
+- C2: Remove the workspace eyebrow from shared page headings — typecheck a lint prošly.
+
+- C3: Remove the shared page footer — typecheck a lint prošly.
+
+- C4: Mark destructive row and confirmation actions in red — typecheck a lint prošly.
+
+- C5: Color required-field markers red through shared form labels — typecheck a lint prošly.
+
+- C6: Simplify edit and download labels consistently — typecheck a lint prošly.
+
+- C7: Keep tab labels free of hover underlines — typecheck a lint prošly.
+
+- C8: Place reports before settings in management navigation — typecheck a lint prošly.
+
+- C9: Reserve green buttons for primary page actions — typecheck a lint prošly.
+
+- Test document permissions metadata versions and recipient changes — typecheck a lint prošly.
+
+- A7 follow-up: Validate export periods at their date fields — typecheck a lint prošly.
+
+- A7 follow-up: Preserve API field errors and surface unmapped validation failures — typecheck a lint prošly.
+
+- Keep empty-table messages fully visible on small screens — typecheck a lint prošly.
+
+- A7 follow-up: Collect numeric errors and validate attachments before saving — typecheck a lint prošly.
+
+- B1 follow-up: Place list creation actions inside shared table toolbars — typecheck a lint prošly.
+
+- A6 follow-up: Keep status filtering in the merged driver operations table — typecheck a lint prošly.
+
+### Dokončení UX/FE iterace A1–C9
+
+Všechny body nového UX zadání implementovány na `codex/ux-refinements` s jednotlivými commity a pushi. Finální aplikační commit `7fffcfc` prošel 43 testy, typecheckem, lintem, produkčním buildem, kontrolou čistého produktu a kontraktů. Ověřeny desktopové/mobilní scénáře i produkční preview a skutečný export XLSX. Kompletní report je v `docs/ux-refinements.md`, včetně dvou nutných nových příkazů pro metadata dokumentu a příjemce a rozhodnutí o jednom servisním kontaktu. Podmínka zahájení jízdy řidiče zůstává nezměněná. Připraveno k revizi; main ani veřejné demo se v této iteraci neměnily.
+
+### Následný regresní průchod UX změn
+
+Na žádost uživatele znovu ověřen `f2efa8c`: 43 testů, lint, typecheck, build, čistý produkt a kontrakty prošly. Desktop/mobil navíc prošly skutečným ukládáním a editací servisního kontaktu, CCS karty a její vazby i změnou/ukončením přidělení s historií. Zopakovány byly dokumenty, přílohy včetně selhání a opakování, CCS, dialogy, validace a skutečný produkční export XLSX. Žádná oprava aplikačního kódu nebyla nutná; podrobný záznam je v `docs/verification.md`. Větev zůstává připravená k revizi a případnému sloučení do main.
+
+### 30. 10. 2026 — Kontrola omezeného zadání detailu vozidla
+
+Všechny nově vyjmenované prvky detailu vozidla jsou již odstraněné v `VehiclePage` / `ServicePlan`. Úprava vozidla, individuálního plánu, výběr šablony a Dokumenty zůstaly zachované. Prošly lint, typecheck, 43 testů, build a cílená kontrola Chromium desktop/mobil včetně uploadu/náhledu/stažení pojištění. Aplikační kód a vzhled se neměnily; nový commit obsahuje pouze report kontroly v `docs/verification.md` a tento záznam.
+
+### 31. 10. 2026 — Drobné UX opravy po průchodu aplikací
+
+- Sdílený `FieldLabel` v `components/ui.tsx` sjednocuje labely `Form` i `Field`; nezalomitelná mezera váže červenou hvězdičku k poslednímu slovu.
+- `Button` přidává existující Pencil pouze textům obsahujícím Upravit bez již přítomné tužky (CCS karta, šablona, kontakt, termín). Odkaz Upravit termín mimo Button dostal ikonu ručně; ikonové tlačítko individuálního plánu má aria-label již nyní.
+- Sdílený `DocumentPage` používá Back se zachováním původní cesty, filtrů a kontextového názvu. Dokumenty se otevírají z vozidla, řidiče a jeho pracovního prostoru, zakázky, závady, tankování, výdaje a CCS transakce/výpisu. Dva přímé vstupy (STK ve vozidlech, PDF výpisu) používají společný DocumentLink. Ruční návrat na jednotlivých stránkách nebyl potřeba. Při přímém otevření bez navigačního kontextu se použije vlastník dokumentu.
+- Toasty se automaticky zavírají po 7000 ms (`TOAST_DURATION_MS`), i opakovaná stejná zpráva obnoví čas. Ruční zavření zůstává. Chyby formulářů jsou nadále trvalé Notice, nikoli toasty.
+- Připomínka koncového tachometru v přehledu řidiče používá stejnou červenou variantu Notice jako detail jízdy; akční odkaz zůstává.
+- Jediná neakční hláška o uložených provozních záznamech byla odstraněna ze společného Dashboard pro Fleet manažera a Vedení. Další výskyt stejné hlášky nenalezen, ostatní bannery zachovány.
+- Společná definice editoru jízd používá Místo od a Začátek. Ponecháno: Skutečné místo do, Skutečný konec, Skutečný čas transakce, Skutečný průběh; rovněž Skutečná cena a popis Skutečně uskutečněné jízdy.
+- Palivo vozidla má nový formulářový číselník Nafta/Benzín/LPG/CNG/Elektro/Hybrid. Existoval pouze string, nikoli enum. API, backend a datové modely se neměnily; starší vlastní hodnotu select zachová. Palivo tankování zůstává beze změny.
+- Bez sdílené komponenty pro konkrétní obsah: odstranění hlášky Dashboard a lokální texty editoru, nabídka paliva vozidla; vzhled a layout jinak zachovány.
+- Otevřená otázka: Značka / model je povinný volný text, ponechán. Doporučení: ponechat text kvůli různým modelům a historickým datům; případný číselník značek zavést odděleně s mapováním starých hodnot, nikoli tichou náhradou kombinovaného pole.
+- Ověření: typecheck, lint, všech 43 testů a produkční build prošly (původní upozornění na velikost JS chunků). Chromium ověřil desktop/mobil 1440/375 px ve formuláři vozidla, select paliva, skutečné uložení a automatické zavření toastu. Navíc prohlížeč ověřil 78 povinných labelů sdílených editorů vozidel, řidičů, zakázek, jízd, závad, tankování, výdajů, termínů a nastavení v šířkách 320/1200 px. Ověření všech provozních scénářů s externími službami není součástí této změny.
+
+- Upřesnění návratu z dokumentu: při návratu na detail vozidla zobrazuje společný DocumentPage text „Detail vozidla“ místo SPZ, včetně přímých vstupů s returnLabel. Cíl odkazu zůstává zachován.
+
+- Upřesnění popisků společného editoru jízdy: Počáteční místo, Začáteční datum, Konečné místo, Konečné datum. První dva názvy platí i při zahájení jízdy. Typy polí a ostatní texty mimo editor zůstávají zachovány.
+
+- Sjednocení umístění potvrzovacího toastu: sdílený styl používá 50vw místo 50 %, včetně mobilního pravidla. Střed se tak odvozuje z plné šířky viewportu bez posunu podle přítomnosti svislého scrollbaru na delším Přehledu. Vzhled, horní odsazení a čas zavření zůstávají zachovány.
