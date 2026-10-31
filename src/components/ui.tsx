@@ -24,6 +24,7 @@ import {
   X,
   Search,
   ChevronDown,
+  Pencil,
 } from "lucide-react";
 import { z } from "zod";
 import { DomainError } from "../domain/rules";
@@ -45,6 +46,12 @@ export function Button({
       {...props}
       className={`btn ${primary ? "primary" : ""} ${danger ? "danger" : ""} ${props.className || ""}`}
     >
+      {Children.toArray(children).some(
+        (child) => typeof child === "string" && /\bUpravit\b/.test(child),
+      ) &&
+        !Children.toArray(children).some(
+          (child) => isValidElement(child) && child.type === Pencil,
+        ) && <Pencil size={17} />}
       {children}
     </button>
   );
@@ -201,7 +208,15 @@ export function Tabs({
     </nav>
   );
 }
-export function Back({ to, children }: { to: string; children: ReactNode }) {
+export function Back({
+  to,
+  children,
+  returnState,
+}: {
+  to: string;
+  children: ReactNode;
+  returnState?: unknown;
+}) {
   const location = useLocation();
   const candidate: unknown = location.state?.returnTo;
   const target =
@@ -211,7 +226,7 @@ export function Back({ to, children }: { to: string; children: ReactNode }) {
       ? candidate
       : to;
   return (
-    <Link className="back" to={target} state={location.state}>
+    <Link className="back" to={target} state={returnState ?? location.state}>
       <ArrowLeft size={16} />
       {children}
     </Link>
@@ -427,13 +442,7 @@ export function Form({
                 className={"field " + (f.type === "textarea" ? "full" : "")}
               >
                 <label htmlFor={id}>
-                  {f.label}
-                  {f.required && (
-                    <span className="required-mark" aria-hidden="true">
-                      {" "}
-                      *
-                    </span>
-                  )}
+                  <FieldLabel required={f.required}>{f.label}</FieldLabel>
                 </label>
                 {f.type === "select" ? (
                   <select {...common} defaultValue={String(value)}>
@@ -445,6 +454,11 @@ export function Form({
                         Vyberte…
                       </option>
                     )}
+                    {f.key === "fuel" &&
+                      value &&
+                      !f.options?.some(([v]) => v === value) && (
+                        <option value={String(value)}>{String(value)}</option>
+                      )}
                     {f.options?.map(([v, l]) => (
                       <option key={v} value={v}>
                         {l}
@@ -784,6 +798,25 @@ export function ViewToggle({
   );
 }
 
+function FieldLabel({
+  children,
+  required,
+}: {
+  children: ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <span className="field-label">
+      {children}
+      {required && (
+        <span className="required-mark" aria-hidden="true">
+          {"\u00a0*"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 const FieldErrors = createContext<Record<string, string>>({});
 export function Field({
   children,
@@ -803,12 +836,6 @@ export function Field({
     name = el.props.name || generated;
     return (
       <Fragment key={name}>
-        {el.props.required && (
-          <span className="required-mark" aria-hidden="true">
-            {" "}
-            *
-          </span>
-        )}
         {cloneElement(el, {
           name,
           id: el.props.id || generated,
@@ -823,7 +850,22 @@ export function Field({
   });
   return (
     <label {...props} className={`${props.className || ""} validated-field`}>
-      {controls}
+      <FieldLabel
+        required={Children.toArray(children).some(
+          (child) =>
+            isValidElement<InputHTMLAttributes<HTMLInputElement>>(child) &&
+            !!child.props.required,
+        )}
+      >
+        {Children.toArray(children).filter(
+          (child) =>
+            !isValidElement(child) ||
+            !["input", "select", "textarea"].includes(String(child.type)),
+        )}
+      </FieldLabel>
+      {Children.toArray(controls).filter(
+        (child) => isValidElement(child) && child.type === Fragment,
+      )}
       {(explicitError || errors[name]) && (
         <small id={`${generated}-error`} className="field-error" role="alert">
           {explicitError || errors[name]}

@@ -1317,7 +1317,8 @@ dialog::backdrop {
 }
 .toast {
   position: fixed;
-  left: 50%;
+  /* Use the full viewport so page scrollbars cannot shift the toast. */
+  left: 50vw;
   top: max(18px, env(safe-area-inset-top));
   transform: translateX(-50%);
   animation: toast-enter 0.18s ease-out;
@@ -1760,7 +1761,7 @@ footer {
     flex-wrap: wrap;
   }
   .toast {
-    left: 50%;
+    left: 50vw;
     top: max(16px, env(safe-area-inset-top));
     font-size: var(--font-small);
   }
@@ -1961,4 +1962,11 @@ textarea[aria-invalid="true"] {
 /* Keep add-method menus visible when they originate in a table toolbar. */
 .panel:has(.choice-menu) {
   overflow: visible;
+}
+
+.field-label {
+  display: block;
+}
+.required-mark {
+  white-space: nowrap;
 }

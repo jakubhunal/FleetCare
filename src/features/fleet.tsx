@@ -1,6 +1,7 @@
+import { DocumentLink } from "./documents";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { Truck, UserPlus, Pencil, Pause, Play } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import {
@@ -53,7 +54,7 @@ export function VehiclesPage() {
         <Panel title="STK pro založení vozidla">
           {intake.map((d) => (
             <p key={d.id}>
-              <Link to={`/documents/${d.id}`}>{d.name}</Link>{" "}
+              <DocumentLink to={`/documents/${d.id}`}>{d.name}</DocumentLink>{" "}
               <Badge value={d.extraction} />
             </p>
           ))}

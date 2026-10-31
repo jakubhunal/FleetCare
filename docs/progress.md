@@ -130,3 +130,23 @@ Na žádost uživatele znovu ověřen `f2efa8c`: 43 testů, lint, typecheck, bui
 ### 30. 10. 2026 — Kontrola omezeného zadání detailu vozidla
 
 Všechny nově vyjmenované prvky detailu vozidla jsou již odstraněné v `VehiclePage` / `ServicePlan`. Úprava vozidla, individuálního plánu, výběr šablony a Dokumenty zůstaly zachované. Prošly lint, typecheck, 43 testů, build a cílená kontrola Chromium desktop/mobil včetně uploadu/náhledu/stažení pojištění. Aplikační kód a vzhled se neměnily; nový commit obsahuje pouze report kontroly v `docs/verification.md` a tento záznam.
+
+### 31. 10. 2026 — Drobné UX opravy po průchodu aplikací
+
+- Sdílený `FieldLabel` v `components/ui.tsx` sjednocuje labely `Form` i `Field`; nezalomitelná mezera váže červenou hvězdičku k poslednímu slovu.
+- `Button` přidává existující Pencil pouze textům obsahujícím Upravit bez již přítomné tužky (CCS karta, šablona, kontakt, termín). Odkaz Upravit termín mimo Button dostal ikonu ručně; ikonové tlačítko individuálního plánu má aria-label již nyní.
+- Sdílený `DocumentPage` používá Back se zachováním původní cesty, filtrů a kontextového názvu. Dokumenty se otevírají z vozidla, řidiče a jeho pracovního prostoru, zakázky, závady, tankování, výdaje a CCS transakce/výpisu. Dva přímé vstupy (STK ve vozidlech, PDF výpisu) používají společný DocumentLink. Ruční návrat na jednotlivých stránkách nebyl potřeba. Při přímém otevření bez navigačního kontextu se použije vlastník dokumentu.
+- Toasty se automaticky zavírají po 7000 ms (`TOAST_DURATION_MS`), i opakovaná stejná zpráva obnoví čas. Ruční zavření zůstává. Chyby formulářů jsou nadále trvalé Notice, nikoli toasty.
+- Připomínka koncového tachometru v přehledu řidiče používá stejnou červenou variantu Notice jako detail jízdy; akční odkaz zůstává.
+- Jediná neakční hláška o uložených provozních záznamech byla odstraněna ze společného Dashboard pro Fleet manažera a Vedení. Další výskyt stejné hlášky nenalezen, ostatní bannery zachovány.
+- Společná definice editoru jízd používá Místo od a Začátek. Ponecháno: Skutečné místo do, Skutečný konec, Skutečný čas transakce, Skutečný průběh; rovněž Skutečná cena a popis Skutečně uskutečněné jízdy.
+- Palivo vozidla má nový formulářový číselník Nafta/Benzín/LPG/CNG/Elektro/Hybrid. Existoval pouze string, nikoli enum. API, backend a datové modely se neměnily; starší vlastní hodnotu select zachová. Palivo tankování zůstává beze změny.
+- Bez sdílené komponenty pro konkrétní obsah: odstranění hlášky Dashboard a lokální texty editoru, nabídka paliva vozidla; vzhled a layout jinak zachovány.
+- Otevřená otázka: Značka / model je povinný volný text, ponechán. Doporučení: ponechat text kvůli různým modelům a historickým datům; případný číselník značek zavést odděleně s mapováním starých hodnot, nikoli tichou náhradou kombinovaného pole.
+- Ověření: typecheck, lint, všech 43 testů a produkční build prošly (původní upozornění na velikost JS chunků). Chromium ověřil desktop/mobil 1440/375 px ve formuláři vozidla, select paliva, skutečné uložení a automatické zavření toastu. Navíc prohlížeč ověřil 78 povinných labelů sdílených editorů vozidel, řidičů, zakázek, jízd, závad, tankování, výdajů, termínů a nastavení v šířkách 320/1200 px. Ověření všech provozních scénářů s externími službami není součástí této změny.
+
+- Upřesnění návratu z dokumentu: při návratu na detail vozidla zobrazuje společný DocumentPage text „Detail vozidla“ místo SPZ, včetně přímých vstupů s returnLabel. Cíl odkazu zůstává zachován.
+
+- Upřesnění popisků společného editoru jízdy: Počáteční místo, Začáteční datum, Konečné místo, Konečné datum. První dva názvy platí i při zahájení jízdy. Typy polí a ostatní texty mimo editor zůstávají zachovány.
+
+- Sjednocení umístění potvrzovacího toastu: sdílený styl používá 50vw místo 50 %, včetně mobilního pravidla. Střed se tak odvozuje z plné šířky viewportu bez posunu podle přítomnosti svislého scrollbaru na delším Přehledu. Vzhled, horní odsazení a čas zavření zůstávají zachovány.

@@ -11,6 +11,7 @@ import {
   Square,
   List,
   CalendarDays,
+  Pencil,
 } from "lucide-react";
 import { useFleet } from "../app/context";
 import {
@@ -40,7 +41,6 @@ export function Dashboard() {
     edit = useEditors(),
     addVehicle = useAddVehicle();
   const due = deadlines(s).filter((d) => d.state !== "Splněno");
-  const now = today();
   const near = due.filter(
     (d) =>
       d.state === "Vyžaduje řešení" ||
@@ -134,11 +134,6 @@ export function Dashboard() {
             <span>{a.label}</span>
           </button>
         ))}
-      </div>
-      <div className="welcome-strip">
-        <span className="status-dot" />
-        <span>Přehled vychází z uložených provozních záznamů.</span>
-        <span className="subtle-tag">{date(now)}</span>
       </div>
       <div className="kpi-grid">
         <Kpi
@@ -556,7 +551,7 @@ export function DriverWorkspace() {
           {s.trips
             .filter((t) => t.endAt && t.endKm === null)
             .map((t) => (
-              <Notice key={t.id}>
+              <Notice key={t.id} error>
                 Doplňte koncový tachometr jízdy z {date(t.startAt)}.{" "}
                 <Link to={`/trips/${t.id}`}>Otevřít jízdu →</Link>
               </Notice>
@@ -661,6 +656,7 @@ export function DeadlinePage() {
             </Button>
           ) : (
             <Link className="btn" to={d.path}>
+              <Pencil size={17} />
               Upravit termín
             </Link>
           )

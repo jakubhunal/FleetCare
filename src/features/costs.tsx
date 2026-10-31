@@ -1,3 +1,4 @@
+import { DocumentLink } from "./documents";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { Plus, Upload, FileText, Pencil } from "lucide-react";
@@ -326,7 +327,7 @@ export function StatementPage() {
               d.ownerType === "statement" && d.ownerId === x.id && !d.deletedAt,
           )
           .map((d) => (
-            <Link
+            <DocumentLink
               className="btn"
               key={d.id}
               to={`/documents/${d.id}`}
@@ -334,7 +335,7 @@ export function StatementPage() {
             >
               <FileText size={17} />
               Zobrazit výpis (PDF)
-            </Link>
+            </DocumentLink>
           ))}
       />
       <Panel title="Transakce výpisu">

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useLocation } from "react-router";
 import { Upload, Download, Trash2, Pencil } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import type { Document } from "../domain/models";
 import {
+  Back,
   Badge,
   Button,
   DataTable,
@@ -149,6 +150,20 @@ export function useUpload() {
       />,
     );
 }
+export function DocumentLink(props: React.ComponentProps<typeof Link>) {
+  const location = useLocation();
+  return (
+    <Link
+      {...props}
+      state={{
+        returnTo: location.pathname + location.search,
+        returnLabel:
+          document.querySelector("h1")?.textContent || "Předchozí stránka",
+        parentState: location.state,
+      }}
+    />
+  );
+}
 export function DocumentList({
   ownerType,
   ownerId,
@@ -291,9 +306,71 @@ export function DocumentList({
 }
 export function DocumentPage() {
   const { id } = useParams();
+  const location = useLocation();
   const { s, actor, repo, show, close, run } = useFleet();
   const doc = s.documents.find((d) => d.id === id && !d.deletedAt);
   const client = useQueryClient();
+  const fallback = doc
+    ? {
+        vehicle: `/vehicles/${doc.ownerId}/documents`,
+        driver: `/drivers/${doc.ownerId}/documents`,
+        order: `/orders/${doc.ownerId}`,
+        expense: `/expenses/${doc.ownerId}`,
+        fuel: `/fuels/${doc.ownerId}`,
+        fault: `/faults/${doc.ownerId}`,
+        statement: `/statements/${doc.ownerId}`,
+        intake: "/vehicles",
+      }[doc.ownerType]
+    : "/";
+  const returnTo =
+    typeof location.state?.returnTo === "string" &&
+    location.state.returnTo.startsWith("/") &&
+    !location.state.returnTo.startsWith("//")
+      ? location.state.returnTo
+      : fallback;
+  const labels: Record<string, string> = {
+    vehicles: "Vozidla",
+    drivers: "Řidiči",
+    orders: "Zakázky",
+    expenses: "Výdaje",
+    fuels: "Tankování",
+    faults: "Závady",
+    statements: "CCS výpisy",
+    overview: "Přehled",
+    transactions: "CCS transakce",
+    my: "Moje dokumenty",
+    costs: "Náklady a CCS",
+  };
+  const parts = returnTo.split("?")[0].split("/");
+  const previousName =
+    parts[1] === "vehicles"
+      ? s.vehicles.find((v) => v.id === parts[2])?.spz
+      : parts[1] === "drivers"
+        ? s.drivers.find((d) => d.id === parts[2])?.name
+        : parts[1] === "expenses"
+          ? s.expenses.find((e) => e.id === parts[2])?.description
+          : parts[1] === "orders"
+            ? s.orders.find((o) => o.id === parts[2])?.number
+            : parts[1] === "statements"
+              ? s.statements.find((x) => x.id === parts[2])?.name
+              : undefined;
+  const back = (
+    <Back
+      to={returnTo}
+      returnState={
+        location.state?.parentState || {
+          tableQueries: location.state?.tableQueries,
+        }
+      }
+    >
+      {parts[1] === "vehicles" && parts[2]
+        ? "Detail vozidla"
+        : location.state?.returnLabel ||
+          previousName ||
+          labels[parts[1]] ||
+          "Přehled"}
+    </Back>
+  );
   const job = useQuery({
     queryKey: ["job", repo.mode, actor.role, actor.driverId, doc?.jobId],
     queryFn: ({ signal }) => repo.job(actor, doc!.jobId!, signal),
@@ -329,13 +406,18 @@ export function DocumentPage() {
   }, [query.data]);
   if (!doc)
     return (
-      <Empty
-        title="Dokument není dostupný"
-        text="Záznam neexistuje nebo k němu nemáte oprávnění."
-      />
+      <>
+        {" "}
+        {back}
+        <Empty
+          title="Dokument není dostupný"
+          text="Záznam neexistuje nebo k němu nemáte oprávnění."
+        />
+      </>
     );
   return (
     <>
+      {back}
       <PageHead
         title={doc.name}
         subtitle={doc.type + " · " + date(doc.uploadedAt)}

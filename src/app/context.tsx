@@ -1,5 +1,6 @@
 import {
   createContext,
+  useEffect,
   useContext,
   useState,
   type ReactNode,
@@ -18,6 +19,7 @@ type ContextValue = {
   close: () => void;
   toast: (message: string) => void;
 };
+export const TOAST_DURATION_MS = 7000;
 const Context = createContext<ContextValue | null>(null);
 export const useFleet = () => {
   const value = useContext(Context);
@@ -35,7 +37,13 @@ export function WorkspaceProvider({
 }) {
   const client = useQueryClient(),
     [dialog, setDialog] = useState<ReactNode>(null),
-    [message, setMessage] = useState("");
+    [message, setMessageState] = useState<{ text: string } | null>(null);
+  const setMessage = (text: string) => setMessageState(text ? { text } : null);
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessageState(null), TOAST_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [message]);
   const query = useQuery({
     queryKey: ["workspace", repo.mode, actor.role, actor.driverId],
     queryFn: ({ signal }) => repo.read(actor, signal),
@@ -85,7 +93,7 @@ export function WorkspaceProvider({
       {dialog}
       {message && (
         <div className="toast" role="status">
-          {message}
+          {message.text}
           <Button aria-label="Zavřít zprávu" onClick={() => setMessage("")}>
             ×
           </Button>
