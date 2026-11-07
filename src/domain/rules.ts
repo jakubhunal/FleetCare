@@ -177,9 +177,9 @@ export function validateTrip(s: Workspace, t: Trip) {
     );
   if (t.endAt && t.endAt <= t.startAt)
     throw new DomainError("Konec musí být po začátku jízdy.", "endAt");
-  if (t.endKm !== null && t.endKm < t.startKm)
+  if (t.endKm !== null && t.endKm <= t.startKm)
     throw new DomainError(
-      "Koncový tachometr nesmí být nižší než počáteční.",
+      "Koncový tachometr musí být vyšší než počáteční.",
       "endKm",
     );
   if (

@@ -8,6 +8,11 @@ services:
       PORT: 8787
       GOOGLE_SHEET_ID: ${GOOGLE_SHEET_ID:?Set GOOGLE_SHEET_ID in .env.docker}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-service-account.json
+      DATA_DIR: /data
+      MAIL_WEBHOOK_URL: ${MAIL_WEBHOOK_URL:-}
+      MAIL_WEBHOOK_KEY: ${MAIL_WEBHOOK_KEY:-}
+    volumes:
+      - gateway_data:/data
     secrets:
       - source: google_service_account
         target: google-service-account.json
@@ -48,5 +53,6 @@ secrets:
     file: ${GOOGLE_SERVICE_ACCOUNT_FILE:?Set GOOGLE_SERVICE_ACCOUNT_FILE in .env.docker}
 
 volumes:
+  gateway_data:
   caddy_data:
   caddy_config:

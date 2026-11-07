@@ -1,7 +1,7 @@
 import { dateKey } from "../lib/format";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { Download, Pencil, Bell, Square } from "lucide-react";
+import { Download, Pencil, Bell, Square, Plus } from "lucide-react";
 import { useFleet } from "../app/context";
 import {
   Back,
@@ -31,12 +31,21 @@ import {
 import { ExportDialog } from "./reports";
 import { tripStatus } from "../domain/models";
 export function OrdersPage() {
-  const { s } = useFleet();
+  const { s, actor } = useFleet(),
+    edit = useEditors();
   return (
     <>
       <PageHead
         title="Zakázky"
-        subtitle="Přepravy přijaté e-mailem, jejich požadavky a přiřazení."
+        subtitle="Přepravy přijaté e-mailem nebo založené ručně, jejich požadavky a přiřazení."
+        actions={
+          actor.role !== "Řidič" && (
+            <Button primary onClick={() => edit("orders")}>
+              <Plus size={17} />
+              Nová zakázka
+            </Button>
+          )
+        }
       />
 
       <Panel>

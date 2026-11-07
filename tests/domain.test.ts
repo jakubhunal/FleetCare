@@ -225,7 +225,8 @@ describe("Provozní pravidla", () => {
       endKm: 150,
       state: "K ověření",
     });
-    expect(() => validateTrip(s, { ...t, endKm: 90 })).toThrow("nižší");
+    expect(() => validateTrip(s, { ...t, endKm: t.startKm })).toThrow("vyšší");
+    expect(() => validateTrip(s, { ...t, endKm: 90 })).toThrow("vyšší");
     s.trips.push(t);
     expect(() => validateTrip(s, { ...t, id: "other" })).toThrow("překrývá");
   });

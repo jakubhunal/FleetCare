@@ -1,8 +1,8 @@
 import { DocumentLink } from "./documents";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Link, useParams } from "react-router";
-import { Truck, UserPlus, Pencil, Pause, Play } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router";
+import { Truck, UserPlus, Pencil, Pause, Play, Trash2 } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import {
   Back,
@@ -96,8 +96,9 @@ const vehicleTabs: [string, string][] = [
 ];
 export function VehiclePage() {
   const { id, tab = "overview" } = useParams();
-  const { s, actor, show } = useFleet(),
-    edit = useEditors();
+  const { s, actor, show, run, close } = useFleet(),
+    edit = useEditors(),
+    navigate = useNavigate();
   const v = s.vehicles.find((v) => v.id === id);
   if (!v)
     return (
@@ -119,6 +120,29 @@ export function VehiclePage() {
               <Button onClick={() => edit("vehicles", v)}>
                 <Pencil size={17} />
                 Upravit informace o vozidle
+              </Button>
+              <Button
+                danger
+                onClick={() =>
+                  show(
+                    <Confirm
+                      title="Smazat vozidlo"
+                      description={`Smazat vozidlo ${v.spz}? Smažou se i jeho termíny, servisní plán, přidělení a vazby CCS karet. Vozidlo s historií (jízdy, tankování, výdaje, závady, zakázky) smazat nelze – nastavte mu stav Odstaveno.`}
+                      onDone={close}
+                      action={async () => {
+                        await run({
+                          type: "vehicle.delete",
+                          id: v.id,
+                          version: v.version,
+                        });
+                        navigate("/vehicles");
+                      }}
+                    />,
+                  )
+                }
+              >
+                <Trash2 size={17} />
+                Smazat vozidlo
               </Button>
             </>
           )
@@ -157,6 +181,7 @@ export function VehiclePage() {
                   [v.engine, v.fuel].filter(Boolean).join(" · ") || null,
                 ],
                 ["Doložený nájezd", number(odometer(s, v.id), "km")],
+                ["Platnost STK", date(v.stkUntil)],
                 ["Požadované ŘP", v.licence || null],
                 ["Nosnost", number(v.capacityKg, "kg")],
                 ["Objem", number(v.volumeM3, "m³")],
@@ -601,6 +626,30 @@ export function DriverPage() {
                   ["Pracovní e-mail", d.email || null],
                   ["Pracovní telefon", d.phone || null],
                   ["Stav profilu", driverState(d)],
+                  [
+                    "Zdravotní způsobilost",
+                    `${d.medicalState} · do ${date(d.medicalUntil)}`,
+                  ],
+                  [
+                    "Řidičská oprávnění",
+                    d.licences.length
+                      ? d.licences
+                          .map((l) => `${l.name} do ${date(l.validUntil)}`)
+                          .join(", ")
+                      : null,
+                  ],
+                  [
+                    "Kvalifikace",
+                    d.qualifications.length
+                      ? d.qualifications
+                          .map((q) =>
+                            q.validUntil
+                              ? `${q.name} do ${date(q.validUntil)}`
+                              : q.name,
+                          )
+                          .join(", ")
+                      : null,
+                  ],
                 ]}
               />
             </>

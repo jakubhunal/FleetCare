@@ -34,6 +34,7 @@ export type Command =
       reason: string;
       odometer: number | null;
     }
+  | { type: "vehicle.delete"; id: string; version: number }
   | {
       type: "order.assign";
       id: string;

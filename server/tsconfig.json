@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "tsBuildInfoFile": "../node_modules/.cache/tsbuildinfo-gateway"
+  },
+  "include": ["./**/*.ts", "./**/*.d.mts", "../src/domain", "../src/data/command-schema.ts", "../src/data/uploads.ts", "../src/data/contracts.ts", "../src/lib/format.ts"]
+}

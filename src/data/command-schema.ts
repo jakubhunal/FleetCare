@@ -38,6 +38,11 @@ const commandUnion = z.discriminatedUnion("type", [
     odometer: z.number().nonnegative().nullable(),
   }),
   z.object({
+    type: z.literal("vehicle.delete"),
+    id: z.string(),
+    version: z.number().int().positive(),
+  }),
+  z.object({
     type: z.literal("order.assign"),
     id: z.string(),
     version: z.number().int().positive(),

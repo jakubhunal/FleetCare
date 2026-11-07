@@ -71,8 +71,10 @@ export function applyCommand(
     if (c.id && !old)
       throw new DomainError("Záznam není dostupný.", undefined, 404);
     if (old) version(old.version, c.version);
-    if (c.collection === "orders")
-      ensure(old, "Zakázky se přijímají pouze integračním importem.");
+    const data: Record<string, unknown> =
+      c.collection === "orders" && !old
+        ? { number: nextOrderNumber(s), externalId: "", ...c.data }
+        : c.data;
     if (c.collection === "trips")
       ensure(old, "Jízdu je třeba zahájit v pracovním prostoru řidiče.");
     if (actor.role === "Řidič") {
@@ -97,7 +99,7 @@ export function applyCommand(
     }
     const parsed = collections[c.collection].parse({
       ...old,
-      ...c.data,
+      ...data,
       ...(old
         ? {
             id: old.id,
@@ -105,7 +107,7 @@ export function applyCommand(
             version: old.version + 1,
             updatedAt: new Date().toISOString(),
           }
-        : { ...meta(), ...c.data }),
+        : { ...meta(), ...data }),
     });
     if (c.collection === "vehicles") {
       const v = collections.vehicles.parse(parsed);
@@ -398,6 +400,16 @@ export function applyCommand(
         );
         Object.assign(a, touch(a), { to: c.from });
       }
+    // A driver holds one vehicle at a time: end their assignment elsewhere.
+    for (const a of s.assignments)
+      if (
+        c.driverId &&
+        a.driverId === c.driverId &&
+        a.vehicleId !== c.vehicleId &&
+        a.from <= c.from &&
+        (!a.to || a.to > c.from)
+      )
+        Object.assign(a, touch(a), { to: c.from });
     if (c.driverId)
       s.assignments.push({
         ...meta(),
@@ -415,6 +427,45 @@ export function applyCommand(
       c.from,
       "assignment-" + crypto.randomUUID(),
     );
+  } else if (c.type === "vehicle.delete") {
+    manager(actor);
+    const v = find(s, "vehicles", c.id);
+    version(v.version, c.version);
+    const linked = (
+      [
+        ["jízdy", s.trips.some((x) => x.vehicleId === v.id)],
+        ["tankování", s.fuels.some((x) => x.vehicleId === v.id)],
+        ["výdaje", s.expenses.some((x) => x.vehicleId === v.id)],
+        ["závady", s.faults.some((x) => x.vehicleId === v.id)],
+        ["CCS transakce", s.transactions.some((x) => x.vehicleId === v.id)],
+        ["zakázky", s.orders.some((x) => x.vehicleId === v.id)],
+      ] as const
+    )
+      .filter(([, has]) => has)
+      .map(([name]) => name);
+    ensure(
+      !linked.length,
+      `Vozidlo nelze smazat, má historii (${linked.join(", ")}). Místo smazání mu nastavte stav Odstaveno.`,
+    );
+    // Planning records belong only to the vehicle and are removed with it.
+    s.vehicles = s.vehicles.filter((x) => x.id !== v.id);
+    s.deadlines = s.deadlines.filter((x) => x.vehicleId !== v.id);
+    s.plans = s.plans.filter((x) => x.vehicleId !== v.id);
+    s.readings = s.readings.filter((x) => x.vehicleId !== v.id);
+    s.assignments = s.assignments.filter((x) => x.vehicleId !== v.id);
+    for (const card of s.cards)
+      if (card.bindings.some((b) => b.vehicleId === v.id))
+        Object.assign(card, touch(card), {
+          bindings: card.bindings.filter((b) => b.vehicleId !== v.id),
+        });
+    const now = new Date().toISOString();
+    for (const d of s.documents)
+      if (
+        !d.deletedAt &&
+        (d.vehicleId === v.id ||
+          (d.ownerType === "vehicle" && d.ownerId === v.id))
+      )
+        Object.assign(d, touch(d), { deletedAt: now });
   } else if (c.type === "order.assign") {
     manager(actor);
     const o = find(s, "orders", c.id);
@@ -659,6 +710,16 @@ export function applyCommand(
         });
     }
   }
+}
+function nextOrderNumber(s: Workspace) {
+  const year = new Date().getFullYear();
+  const prefix = `ZK-${year}-`;
+  const used = s.orders
+    .map((o) => o.number)
+    .filter((n) => n.startsWith(prefix))
+    .map((n) => Number.parseInt(n.slice(prefix.length), 10))
+    .filter(Number.isFinite);
+  return prefix + String(Math.max(0, ...used) + 1).padStart(3, "0");
 }
 function faultOutbox(
   s: Workspace,

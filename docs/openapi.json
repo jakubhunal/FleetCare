@@ -3671,6 +3671,29 @@
             "properties": {
               "type": {
                 "type": "string",
+                "const": "vehicle.delete"
+              },
+              "id": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
                 "const": "order.assign"
               },
               "id": {

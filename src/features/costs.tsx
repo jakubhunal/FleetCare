@@ -1,4 +1,5 @@
 import { DocumentLink } from "./documents";
+import { fuelDifferences, fuelState } from "../domain/ccs";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { Plus, Upload, FileText, Pencil } from "lucide-react";
@@ -191,16 +192,7 @@ export function FuelPage() {
   const f = s.fuels.find((f) => f.id === id);
   if (!f) return <Empty title="Tankování není dostupné" />;
   const transactions = s.transactions.filter((t) => t.fuelId === f.id);
-  const differences = transactions.filter(
-    (t) =>
-      t.state !== "Vyřešeno" &&
-      (t.currency !== f.currency ||
-        t.amountMinor !== f.amountMinor ||
-        t.litres !== f.litres ||
-        Date.parse(t.at) !== Date.parse(f.at) ||
-        (t.cardId && t.cardId !== f.cardId) ||
-        (t.vehicleId && t.vehicleId !== f.vehicleId)),
-  );
+  const differences = fuelDifferences(s, f);
   return (
     <>
       <Back to={actor.role === "Řidič" ? "/my/fuel" : "/costs/fuel"}>
@@ -218,20 +210,7 @@ export function FuelPage() {
       <Panel title="Záznam řidiče">
         <DataGrid
           items={[
-            [
-              "Stav",
-              <Badge
-                value={
-                  !transactions.length && f.state === "Rozdíl"
-                    ? "Čeká na výpis"
-                    : differences.length
-                      ? "Rozdíl"
-                      : f.state === "Rozdíl"
-                        ? "Spárováno"
-                        : f.state
-                }
-              />,
-            ],
+            ["Stav", <Badge value={fuelState(s, f)} />],
             ["Vozidlo", <VRef id={f.vehicleId} />],
             ["Řidič", <DRef id={f.driverId} />],
             ["Datum transakce", date(f.at, true)],

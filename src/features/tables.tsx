@@ -12,6 +12,7 @@ import type {
   Fault,
 } from "../domain/models";
 import { tripStatus } from "../domain/models";
+import { fuelState } from "../domain/ccs";
 import { date, money, number } from "../lib/format";
 export const optionPairs = (a: readonly string[]): [string, string][] =>
   a.map((x) => [x, x]);
@@ -590,6 +591,7 @@ export function FuelTable({
   rows: Records["fuels"][];
   toolbarActions?: ReactNode;
 }) {
+  const { s } = useFleet();
   return (
     <DataTable
       toolbarActions={toolbarActions}
@@ -610,7 +612,7 @@ export function FuelTable({
             "Neúplný podklad",
             "Vyřešeno",
           ]),
-          value: (f) => f.state,
+          value: (f) => fuelState(s, f),
         },
       ]}
       columns={[
@@ -668,8 +670,8 @@ export function FuelTable({
         {
           key: "state",
           label: "CCS stav",
-          sort: (f) => f.state,
-          render: (f) => <Badge value={f.state} />,
+          sort: (f) => fuelState(s, f),
+          render: (f) => <Badge value={fuelState(s, f)} />,
         },
       ]}
     />
