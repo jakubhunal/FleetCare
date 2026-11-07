@@ -1,3 +1,4 @@
+import { useHistory } from "../lib/history";
 import { dateKey } from "../lib/format";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
@@ -448,7 +449,10 @@ export function TripPage() {
 export function FaultsPage() {
   const { s } = useFleet(),
     edit = useEditors();
-  const [historical, setHistorical] = useState(false);
+  const { rows, historical, setHistorical } = useHistory(
+    s.faults,
+    (f) => f.state === "Uzavřena",
+  );
   return (
     <>
       <PageHead
@@ -465,7 +469,7 @@ export function FaultsPage() {
               <HistorySwitch checked={historical} onChange={setHistorical} />
             </>
           }
-          rows={s.faults.filter((f) => historical || f.state !== "Uzavřena")}
+          rows={rows}
         />
       </Panel>
     </>

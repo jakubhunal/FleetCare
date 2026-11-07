@@ -1,8 +1,9 @@
+import { useHistory } from "../lib/history";
 import { DocumentLink } from "./documents";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { Truck, UserPlus, Pencil, Pause, Play, Trash2 } from "lucide-react";
+import { Truck, UserPlus, Pencil, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import {
   Back,
@@ -202,7 +203,22 @@ export function VehiclePage() {
           {tab === "plan" && <ServicePlan vehicle={v} />}
           {tab === "faults" && (
             <>
-              <FaultTable rows={s.faults.filter((f) => f.vehicleId === v.id)} />
+              <FaultTable
+                rows={s.faults.filter((f) => f.vehicleId === v.id)}
+                toolbarActions={
+                  actor.role !== "Řidič" && (
+                    <Button
+                      primary
+                      onClick={() =>
+                        edit("faults", undefined, { vehicleId: v.id })
+                      }
+                    >
+                      <Plus size={17} />
+                      Nahlásit závadu
+                    </Button>
+                  )
+                }
+              />
             </>
           )}
           {tab === "orders" && (
@@ -382,18 +398,21 @@ function Assignments({
   actions?: ReactNode;
 }) {
   const { s } = useFleet();
-  const [historical, setHistorical] = useState(false);
   const now = new Date().toISOString();
-  const rows = s.assignments.filter(
-    (a) =>
-      (!vehicleId || a.vehicleId === vehicleId) &&
-      (!driverId || a.driverId === driverId) &&
-      (historical || !a.to || a.to > now),
+  const prefix = `assignments-${vehicleId || driverId}.`;
+  const { rows, historical, setHistorical } = useHistory(
+    s.assignments.filter(
+      (a) =>
+        (!vehicleId || a.vehicleId === vehicleId) &&
+        (!driverId || a.driverId === driverId),
+    ),
+    (a) => !!a.to && a.to <= now,
+    prefix,
   );
   return (
     <DataTable
       rows={rows}
-      prefix={`assignments-${vehicleId || driverId}.`}
+      prefix={prefix}
       search={(a) => {
         const v = s.vehicles.find((v) => v.id === a.vehicleId);
         return `${v?.spz} ${v?.model} ${s.drivers.find((d) => d.id === a.driverId)?.name} ${a.reason}`;

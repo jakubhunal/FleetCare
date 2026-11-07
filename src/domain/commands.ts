@@ -118,19 +118,22 @@ export function applyCommand(
         "Vozidlo s touto SPZ už existuje.",
         "spz",
       );
-      ensure(
-        !v.vin || /^[A-HJ-NPR-Z0-9]{17}$/i.test(v.vin),
-        "VIN musí mít 17 platných znaků.",
-        "vin",
-      );
-      ensure(
-        !v.vin ||
-          !s.vehicles.some(
-            (x) => x.id !== v.id && normalize(x.vin) === normalize(v.vin),
-          ),
-        "VIN již patří jinému vozidlu.",
-        "vin",
-      );
+      // Imported/legacy VINs must survive unrelated edits verbatim.
+      if (!old || !("vin" in old) || old.vin !== v.vin) {
+        ensure(
+          !v.vin || /^[A-HJ-NPR-Z0-9]{17}$/i.test(v.vin),
+          "VIN musí mít 17 platných znaků.",
+          "vin",
+        );
+        ensure(
+          !v.vin ||
+            !s.vehicles.some(
+              (x) => x.id !== v.id && normalize(x.vin) === normalize(v.vin),
+            ),
+          "VIN již patří jinému vozidlu.",
+          "vin",
+        );
+      }
     }
     if (c.collection === "trips") {
       const t = collections.trips.parse(parsed);

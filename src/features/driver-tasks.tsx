@@ -1,3 +1,4 @@
+import { odometerErrors } from "../lib/form-validation";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useFleet } from "../app/context";
@@ -116,6 +117,10 @@ export function CompleteOdometerDialog({ tripId }: { tripId: string }) {
         />
         <Form
           onDirty={setDirty}
+          initial={{ startKm: trip.startKm }}
+          validate={(values) =>
+            odometerErrors({ ...values, startKm: trip.startKm })
+          }
           fields={[
             {
               key: "endKm",

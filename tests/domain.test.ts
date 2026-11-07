@@ -427,3 +427,43 @@ describe("Ekonomika", () => {
     ).toBe(0);
   });
 });
+
+describe("VIN edits", () => {
+  it.each(["WVWZZZ1JZXW000001", " wvwzzz1jzxw000001 ", "legacy-import"])(
+    "preserves unchanged VIN %s when only STK changes",
+    (vin) => {
+      const s = fixture();
+      s.vehicles[0].vin = vin;
+      applyCommand(s, manager, {
+        type: "save",
+        collection: "vehicles",
+        id: "v1",
+        version: 1,
+        data: { ...s.vehicles[0], stkUntil: "2031-01-01" },
+      });
+      expect(s.vehicles[0]).toMatchObject({ vin, stkUntil: "2031-01-01" });
+    },
+  );
+  it("still rejects changed malformed and duplicate VINs", () => {
+    const s = fixture();
+    s.vehicles[0].vin = "legacy-import";
+    const save = (vin: string) =>
+      applyCommand(s, manager, {
+        type: "save",
+        collection: "vehicles",
+        id: "v1",
+        version: 1,
+        data: { vin },
+      });
+    expect(() => save("invalid")).toThrow("VIN musí mít 17");
+    s.vehicles.push({
+      ...s.vehicles[0],
+      id: "v2",
+      spz: "OTHER",
+      vin: "WVWZZZ1JZXW000001",
+    });
+    expect(() => save("WVWZZZ1JZXW000001")).toThrow("VIN již patří");
+    save("WVWZZZ1JZXW000002");
+    expect(s.vehicles[0].vin).toBe("WVWZZZ1JZXW000002");
+  });
+});

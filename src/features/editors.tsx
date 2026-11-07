@@ -1,3 +1,4 @@
+import { odometerErrors } from "../lib/form-validation";
 import { z } from "zod";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -61,7 +62,7 @@ export function editorFields(
     case "vehicles":
       return [
         f("spz", "SPZ", "text", true),
-        f("vin", "VIN", "text", false, { help: "Pokud je znám: 17 znaků." }),
+        f("vin", "VIN", "text", !existing, { help: "17 platných znaků." }),
         f("model", "Značka / model", "text", true),
         f("year", "Rok výroby", "number"),
         f("category", "Kategorie", "select", true, {
@@ -86,7 +87,7 @@ export function editorFields(
         f("dimensions", "Doložené rozměry (m)"),
         f("configuration", "Konfigurace soupravy"),
         f("equipment", "Vybavení oddělené čárkou"),
-        f("stkUntil", "Platnost STK do", "date"),
+        f("stkUntil", "Platnost STK do", "date", !existing),
         f("serviceId", "Nasmlouvaný servis", "select", false, {
           options: s.services.map((x) => [x.id, x.name]),
         }),
@@ -194,11 +195,6 @@ export function editorFields(
               }),
               f("serviceFrom", "Servis od", "datetime"),
               f("serviceTo", "Servis do", "datetime"),
-              f(
-                "unavailable",
-                "Vozidlo je v tomto období nedostupné",
-                "checkbox",
-              ),
               f("repair", "Popis opravy", "textarea"),
               f("actualMinor", "Skutečná cena (nenahrazuje výdaj)", "money"),
               currency,
@@ -269,9 +265,6 @@ export function editorFields(
         { ...driver, required: false },
         f("date", "Datum termínu", "date", true),
         f("km", "Km hranice", "number"),
-        f("responsible", "Odpovědná osoba / role", "text", true, {
-          initial: "Fleet manažer",
-        }),
         f("priority", "Priorita", "select", true, {
           initial: "Střední",
           options: options(["Nízká", "Střední", "Vysoká"]),
@@ -731,11 +724,14 @@ export function EntityEditor({
       <div className="dialog-body">
         <Form
           fields={fields}
+          validate={collection === "trips" ? odometerErrors : undefined}
           initial={data}
           onDirty={setDirty}
           submit={startTrip ? "Zahájit jízdu" : "Uložit"}
           onSubmit={async (values) => {
             values = { ...defaults, ...values };
+            if (collection === "deadlines" && !record)
+              values.responsible = "Fleet manažer";
             if (driverMode && ["trips", "fuels"].includes(collection))
               values.driverId = actor.driverId;
             if (collection === "trips" && record) {
@@ -786,7 +782,7 @@ export function EntityEditor({
             for (const k of nullable) if (values[k] === "") values[k] = null;
             if (collection === "drivers") {
               values.licences = licences;
-              values.qualifications = qualifications;
+              if (record) values.qualifications = qualifications;
             }
             if (collection === "templates" || collection === "plans")
               values.items = items;
@@ -892,11 +888,13 @@ export function EntityEditor({
                 value={licences}
                 onChange={change(setLicences)}
               />
-              <Entitlements
-                title="Kvalifikace"
-                value={qualifications}
-                onChange={change(setQualifications)}
-              />
+              {record && (
+                <Entitlements
+                  title="Kvalifikace"
+                  value={qualifications}
+                  onChange={change(setQualifications)}
+                />
+              )}
             </>
           )}
           {collection === "plans" && (

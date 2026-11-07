@@ -165,9 +165,16 @@ Práce na codex/ux-batch-2; audit a výsledky v docs/ux-batch-2.md. A1/A3 vyžad
 
 UX dávka 2: implementovány společné komponenty, řidičské formuláře/úkoly, upozornění, sjednocení nájezdu a reportů. Podrobný stav A–F v docs/ux-batch-2.md. Kontroly: 50 testů prošlo, typecheck/lint/build prošly; Chromium ověřil dialog, upload a mobil. A1/A3 vyžadují potvrzenou integraci Sheets, jméno manažera není v Actor API. Finální větev codex/ux-batch-2-cloud.
 
+## FE audit — dávka 3
+
+Na aktuální větvi `work` dokončeny A1–A8 a B1/B3/B4 v samostatných commitech; B2 již hotovo. Report, příčina VIN, inventura historie a rozhodnutí: [fe-audit-3.md](fe-audit-3.md). Typecheck, lint a 61 testů prošly; Chromium ověřil formuláře, časy, historii a navigaci v šířkách 1440/390 px. Model ani API nezměněny, jediná doménová oprava se týká nezměněného VIN. Předání obsahuje závěrečný build/test a výsledek pushe na `origin/work`; veřejné demo se touto dávkou nenasazuje.
 ### 4. 11. 2026 — Opravy Sheets gatewaye
 
 - Účty s `active` odlišným od TRUE se nepřihlásí.
 - Závady se načítají a ukládají do listu `faults`; historie přidělení se načítá z `assignments`, při změně se předchozí záznam uzavře a nový přidá. Při přiřazení kamionu/nákladního vozidla gateway vyžaduje skupinu C nebo CE.
 - Příkaz `vehicle.assign` nese verzi vozidla; doménová kontrola i Sheets gateway vrací konflikt 409 při zastaralé verzi. HTTP klient zobrazuje hlášku o obnovení detailu.
 - Ověřeno: `node --check` obou modulů gatewaye, typecheck, lint, všech 50 testů a produkční build. Testy potřebovaly povolený localhost kvůli svému HTTP serveru. Produkční build má dosavadní upozornění na velké JS chunky. Skutečná tabulka ani nasazená gateway nebyly dostupné pro integrační ověření.
+
+## Oprava CI po sloučení dávky 3 do main
+
+Na `main` forku `UnsweetenedLemonade/FleetCare` reprodukována chyba TS2300: při sloučení zůstaly v `src/features/fleet.tsx` duplicitní importy z `react-router` a `lucide-react`. Importy sjednoceny při zachování `useNavigate`, `Plus` i `Trash2`; chování aplikace se nemění. Ověření: typecheck včetně serveru, lint, 61 testů, produkční build a regenerace kontraktů bez rozdílu vůči uloženým schématům. Oprava je určena k pushnutí na `origin/main` a následnému opakování kontroly PR do hlavního repozitáře.

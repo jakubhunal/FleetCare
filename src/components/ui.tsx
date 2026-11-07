@@ -358,6 +358,7 @@ export function Form({
   submit = "Uložit",
   danger = false,
   onDirty,
+  validate,
 }: {
   fields: FieldSpec[];
   initial?: Record<string, unknown>;
@@ -366,6 +367,7 @@ export function Form({
   submit?: string;
   danger?: boolean;
   onDirty?: (dirty: boolean) => void;
+  validate?: (values: Record<string, unknown>) => Record<string, string>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const hasField = (key: string) =>
@@ -400,6 +402,7 @@ export function Form({
             f.type === "money" && n !== null ? Math.round(n * 100) : n;
         } else values[f.key] = raw;
       }
+      Object.assign(invalid, validate?.(values));
       if (Object.keys(invalid).length) {
         setErrors(invalid);
         return;
@@ -446,7 +449,16 @@ export function Form({
         ref={formRef}
         noValidate
         onSubmit={save}
-        onChange={() => onDirty?.(true)}
+        onChange={(event) => {
+          onDirty?.(true);
+          if (validate)
+            setErrors(
+              validate({
+                ...initial,
+                ...Object.fromEntries(new FormData(event.currentTarget)),
+              }),
+            );
+        }}
       >
         <div className="form-grid">
           {fields.map((f) => {
