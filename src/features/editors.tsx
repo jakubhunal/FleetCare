@@ -26,6 +26,7 @@ import {
   Form,
   ViewToggle,
   Notice,
+  useConfirmDelete,
   type FieldSpec,
 } from "../components/ui";
 import { DomainError } from "../domain/rules";
@@ -326,13 +327,18 @@ function Entitlements({
   title,
   value,
   onChange,
+  persisted = false,
 }: {
   title: string;
   value: Driver["licences"];
   onChange: (v: Driver["licences"]) => void;
+  persisted?: boolean;
 }) {
+  const { confirmDelete, confirmation } = useConfirmDelete();
+  const [savedRows, setSavedRows] = useState(() => value.map(() => persisted));
   return (
     <div className="subform">
+      {confirmation}
       <h3>{title}</h3>
       {value.map((item, i) => (
         <div className="repeat-row" key={i}>
@@ -367,14 +373,33 @@ function Entitlements({
           </Field>
           <Button
             aria-label={`Odebrat ${title} ${i + 1}`}
-            onClick={() => onChange(value.filter((_, n) => n !== i))}
+            onClick={() => {
+              const remove = () => {
+                setSavedRows((rows) => rows.filter((_, n) => n !== i));
+                onChange(value.filter((_, n) => n !== i));
+              };
+              if (savedRows[i])
+                confirmDelete({
+                  title:
+                    title === "Oprávnění"
+                      ? "Odebrat oprávnění?"
+                      : "Odebrat kvalifikaci?",
+                  description: `Opravdu chcete odebrat položku „${item.name || title}“?`,
+                  label: "Odebrat",
+                  action: remove,
+                });
+              else remove();
+            }}
           >
             <Trash2 size={17} />
           </Button>
         </div>
       ))}
       <Button
-        onClick={() => onChange([...value, { name: "", validUntil: null }])}
+        onClick={() => {
+          setSavedRows((rows) => [...rows, false]);
+          onChange([...value, { name: "", validUntil: null }]);
+        }}
       >
         <Plus size={16} />
         Přidat {title.toLowerCase()}
@@ -385,12 +410,16 @@ function Entitlements({
 function PlanItems({
   value,
   onChange,
+  persistedIds = [],
 }: {
   value: Records["plans"]["items"];
   onChange: (v: Records["plans"]["items"]) => void;
+  persistedIds?: string[];
 }) {
+  const { confirmDelete, confirmation } = useConfirmDelete();
   return (
     <div className="subform">
+      {confirmation}
       <h3>Položky plánu</h3>
       {value.map((item, i) => (
         <div className="repeat-card" key={item.id}>
@@ -413,7 +442,18 @@ function PlanItems({
             <Button
               danger
               aria-label="Odebrat úkon"
-              onClick={() => onChange(value.filter((x) => x.id !== item.id))}
+              onClick={() => {
+                const remove = () =>
+                  onChange(value.filter((x) => x.id !== item.id));
+                if (persistedIds.includes(item.id))
+                  confirmDelete({
+                    title: "Odebrat úkon?",
+                    description: `Opravdu chcete odebrat úkon „${item.name || "Bez názvu"}“?`,
+                    label: "Odebrat",
+                    action: remove,
+                  });
+                else remove();
+              }}
             >
               <Trash2 size={17} />
             </Button>
@@ -708,6 +748,7 @@ function ServicePlanDialog({
             )}
             {(mode === "individual" || !!templateId) && (
               <PlanItems
+                persistedIds={record?.items.map((item) => item.id)}
                 value={items}
                 onChange={(next) => {
                   setItems(next);
@@ -853,6 +894,7 @@ export function EntityEditor({
   startTrip?: boolean;
 }) {
   const { s, actor, run, upload, close } = useFleet();
+  const { confirmDelete, confirmation } = useConfirmDelete();
   const [attachment, setAttachment] = useState<File[]>([]);
   const [savedExpenseVehicle, setSavedExpenseVehicle] = useState<string | null>(
     null,
@@ -926,6 +968,9 @@ export function EntityEditor({
   const [bindings, setBindings] = useState(
     record && "bindings" in record ? record.bindings : [],
   );
+  const [savedBindings, setSavedBindings] = useState(() =>
+    bindings.map(() => true),
+  );
   for (const field of fields) {
     if (field.type === "datetime" && typeof data[field.key] === "string")
       data[field.key] = localTime(data[field.key] as string);
@@ -958,6 +1003,7 @@ export function EntityEditor({
       onClose={close}
     >
       <div className="dialog-body">
+        {confirmation}
         <Form
           fields={fields}
           validate={
@@ -1112,12 +1158,14 @@ export function EntityEditor({
             <>
               <Entitlements
                 title="Oprávnění"
+                persisted={!!record}
                 value={licences}
                 onChange={change(setLicences)}
               />
               {record && (
                 <Entitlements
                   title="Kvalifikace"
+                  persisted={!!record}
                   value={qualifications}
                   onChange={change(setQualifications)}
                 />
@@ -1125,7 +1173,15 @@ export function EntityEditor({
             </>
           )}
           {(collection === "templates" || collection === "plans") && (
-            <PlanItems value={items} onChange={change(setItems)} />
+            <PlanItems
+              persistedIds={
+                record && "items" in record
+                  ? record.items.map((item) => item.id)
+                  : []
+              }
+              value={items}
+              onChange={change(setItems)}
+            />
           )}
           {collection === "orders" && (
             <Stops value={stops} onChange={change(setStops)} />
@@ -1183,9 +1239,23 @@ export function EntityEditor({
                   </div>
                   <Button
                     danger
-                    onClick={() =>
-                      setBindings(bindings.filter((_, n) => n !== i))
-                    }
+                    onClick={() => {
+                      const remove = () => {
+                        setDirty(true);
+                        setSavedBindings((rows) =>
+                          rows.filter((_, n) => n !== i),
+                        );
+                        setBindings(bindings.filter((_, n) => n !== i));
+                      };
+                      if (savedBindings[i])
+                        confirmDelete({
+                          title: "Odebrat vazbu?",
+                          description: `Opravdu chcete odebrat vazbu karty „${String(data.number || "CCS")}“ na vozidlo „${s.vehicles.find((v) => v.id === b.vehicleId)?.spz || b.vehicleId}“?`,
+                          label: "Odebrat",
+                          action: remove,
+                        });
+                      else remove();
+                    }}
                   >
                     Odebrat vazbu
                   </Button>
@@ -1194,6 +1264,7 @@ export function EntityEditor({
               <Button
                 onClick={() => {
                   setDirty(true);
+                  setSavedBindings((rows) => [...rows, false]);
                   setBindings([
                     ...bindings,
                     { vehicleId: "", from: today(), to: null },

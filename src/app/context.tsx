@@ -8,7 +8,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Actor, Workspace } from "../domain/models";
 import type { Command, Repository, UploadInput } from "../data/contracts";
-import { Button, Dialog, Notice } from "../components/ui";
+import { Button, ActionConfirmation, Notice } from "../components/ui";
 type ContextValue = {
   s: Workspace;
   actor: Actor;
@@ -79,12 +79,10 @@ export function WorkspaceProvider({
       if (command.type === "document.delete")
         client.removeQueries({ queryKey: ["file"] });
       await refresh();
-
     },
     upload: async (input) => {
       await repo.upload(actor, input);
       await refresh();
-
     },
   };
   return (
@@ -113,34 +111,13 @@ export function Confirm({
   action: () => Promise<void>;
   onDone: () => void;
 }) {
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
   return (
-    <Dialog title={title} onClose={onDone}>
-      <div className="dialog-body">
-        <p>{description}</p>
-        {error && <Notice error>{error}</Notice>}
-        <div className="form-actions">
-          <Button onClick={onDone}>Zrušit</Button>
-          <Button
-            danger
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await action();
-                onDone();
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Akce selhala.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {busy ? "Ukládání…" : title}
-          </Button>
-        </div>
-      </div>
-    </Dialog>
+    <ActionConfirmation
+      title={title}
+      description={description}
+      action={action}
+      onDone={onDone}
+      label={title}
+    />
   );
 }

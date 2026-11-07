@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useLocation, useNavigate } from "react-router";
 import { Upload, Download, Trash2, Pencil } from "lucide-react";
-import { useFleet, Confirm } from "../app/context";
+import { useFleet } from "../app/context";
 import type { Document } from "../domain/models";
 import {
   Back,
@@ -11,6 +11,7 @@ import {
   Button,
   DataTable,
   Dialog,
+  DeleteConfirmation,
   Empty,
   Form,
   HistorySwitch,
@@ -301,8 +302,9 @@ export function DocumentList({
                       aria-label={`Smazat ${d.name}`}
                       onClick={() =>
                         show(
-                          <Confirm
-                            title="Smazat dokument"
+                          <DeleteConfirmation
+                            title="Smazat dokument?"
+                            irreversible
                             description={`Smazat soubor „${d.name}“? Profil a dříve uložená oprávnění zůstanou zachována.`}
                             onDone={close}
                             action={() =>
@@ -465,8 +467,9 @@ export function DocumentPage() {
                   danger
                   onClick={() =>
                     show(
-                      <Confirm
-                        title="Smazat dokument"
+                      <DeleteConfirmation
+                        title="Smazat dokument?"
+                        irreversible
                         description={`Opravdu smazat dokument „${doc.name}“?`}
                         onDone={close}
                         action={async () => {

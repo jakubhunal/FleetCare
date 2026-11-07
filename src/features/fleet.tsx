@@ -3,7 +3,15 @@ import { DocumentLink } from "./documents";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { Truck, UserPlus, Pencil, Pause, Play, Plus, Trash2 } from "lucide-react";
+import {
+  Truck,
+  UserPlus,
+  Pencil,
+  Pause,
+  Play,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import {
   Back,
@@ -12,6 +20,7 @@ import {
   DataGrid,
   DataTable,
   Dialog,
+  DeleteConfirmation,
   Empty,
   Form,
   HistorySwitch,
@@ -126,8 +135,9 @@ export function VehiclePage() {
                 danger
                 onClick={() =>
                   show(
-                    <Confirm
-                      title="Smazat vozidlo"
+                    <DeleteConfirmation
+                      title="Smazat vozidlo?"
+                      irreversible
                       description={`Smazat vozidlo ${v.spz}? Smažou se i jeho termíny, servisní plán, přidělení a vazby CCS karet. Vozidlo s historií (jízdy, tankování, výdaje, závady, zakázky) smazat nelze – nastavte mu stav Odstaveno.`}
                       onDone={close}
                       action={async () => {

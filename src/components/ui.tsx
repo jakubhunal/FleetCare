@@ -262,17 +262,30 @@ export function Dialog({
   children,
   onClose,
   dirty = false,
+  role = "dialog",
+  describedBy,
+  dismissOnBackdrop = false,
+  initialFocus,
+  busy = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   dirty?: boolean;
+  role?: "dialog" | "alertdialog";
+  describedBy?: string;
+  dismissOnBackdrop?: boolean;
+  initialFocus?: string;
+  busy?: boolean;
 }) {
+  const titleId = useId();
+  const outsideDown = useRef(false);
   const ref = useRef<HTMLDialogElement>(null);
   const confirmationRef = useRef<HTMLDivElement>(null);
   const draftFocus = useRef<HTMLElement | null>(null);
   const [confirm, setConfirm] = useState(false);
   const close = () => {
+    if (busy) return;
     if (confirm) {
       setConfirm(false);
       return;
@@ -289,11 +302,49 @@ export function Dialog({
   }, [confirm]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    ref.current?.showModal();
+    const dialog = ref.current;
+    dialog?.showModal();
+    if (initialFocus) dialog?.querySelector<HTMLElement>(initialFocus)?.focus();
     return () => {
-      previous?.focus();
+      dialog?.close();
+      queueMicrotask(() => {
+        if (!dialog?.open && previous?.isConnected) previous.focus();
+      });
     };
-  }, []);
+  }, [initialFocus]);
+  useEffect(() => {
+    if (role !== "alertdialog" || !initialFocus) return;
+    // Embedded viewers can steal focus even from a native modal in Chromium.
+    const keepFocus = () =>
+      queueMicrotask(() => {
+        const dialog = ref.current;
+        const top = Array.from(document.querySelectorAll("dialog:modal")).at(
+          -1,
+        );
+        if (
+          dialog?.open &&
+          top === dialog &&
+          !dialog.contains(document.activeElement)
+        )
+          dialog.querySelector<HTMLElement>(initialFocus)?.focus();
+      });
+    document.addEventListener("focusin", keepFocus);
+    window.addEventListener("blur", keepFocus);
+    return () => {
+      document.removeEventListener("focusin", keepFocus);
+      window.removeEventListener("blur", keepFocus);
+    };
+  }, [initialFocus, role]);
+  const outside = (event: React.MouseEvent<HTMLDialogElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return (
+      event.target === event.currentTarget &&
+      (event.clientX < rect.left ||
+        event.clientX > rect.right ||
+        event.clientY < rect.top ||
+        event.clientY > rect.bottom)
+    );
+  };
   return (
     <dialog
       ref={ref}
@@ -301,11 +352,28 @@ export function Dialog({
         e.preventDefault();
         close();
       }}
-      aria-labelledby="dialog-title"
+      onKeyDown={(event) => {
+        if (role === "alertdialog" && event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+        }
+      }}
+      role={role}
+      aria-labelledby={titleId}
+      aria-describedby={describedBy}
+      aria-busy={busy || undefined}
+      onPointerDown={(event) => {
+        outsideDown.current = outside(event);
+      }}
+      onClick={(event) => {
+        if (dismissOnBackdrop && outsideDown.current && outside(event)) close();
+        outsideDown.current = false;
+      }}
     >
       <header className="dialog-head">
-        <h2 id="dialog-title">{title}</h2>
-        <Button aria-label="Zavřít dialog" onClick={close}>
+        <h2 id={titleId}>{title}</h2>
+        <Button aria-label="Zavřít dialog" disabled={busy} onClick={close}>
           <X size={20} />
         </Button>
       </header>
@@ -328,6 +396,103 @@ export function Dialog({
     </dialog>
   );
 }
+export type DeleteConfirmationOptions = {
+  title: string;
+  description: string;
+  action: () => Promise<void> | void;
+  label?: "Smazat" | "Odebrat" | "Odstranit";
+  irreversible?: boolean;
+};
+export function ActionConfirmation({
+  title,
+  description,
+  action,
+  label = "Smazat",
+  irreversible = false,
+  onDone,
+  deleteMode = false,
+}: Omit<DeleteConfirmationOptions, "label"> & {
+  label?: string;
+  onDone: () => void;
+  deleteMode?: boolean;
+}) {
+  const descriptionId = useId();
+  const inFlight = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <Dialog
+      title={title}
+      role={deleteMode ? "alertdialog" : "dialog"}
+      describedBy={deleteMode ? descriptionId : undefined}
+      dismissOnBackdrop={deleteMode}
+      initialFocus={deleteMode ? "[data-confirm-cancel]" : undefined}
+      busy={deleteMode && busy}
+      onClose={onDone}
+    >
+      <div className="dialog-body">
+        <p id={descriptionId}>
+          {description}
+          {irreversible ? " Tuto akci nelze vrátit zpět." : ""}
+        </p>
+        {error && <Notice error>{error}</Notice>}
+        <div className="form-actions">
+          <Button
+            data-confirm-cancel
+            disabled={deleteMode && busy}
+            onClick={onDone}
+          >
+            Zrušit
+          </Button>
+          <Button
+            danger
+            disabled={busy}
+            onClick={async () => {
+              if (inFlight.current) return;
+              inFlight.current = true;
+              setBusy(true);
+              setError("");
+              try {
+                await action();
+                onDone();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Akce selhala.");
+              } finally {
+                inFlight.current = false;
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? (deleteMode ? "Probíhá…" : "Ukládání…") : label}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+export function DeleteConfirmation(
+  props: DeleteConfirmationOptions & { onDone: () => void },
+) {
+  return <ActionConfirmation {...props} deleteMode />;
+}
+export function useConfirmDelete() {
+  const [request, setRequest] = useState<{
+    options: DeleteConfirmationOptions;
+    key: string;
+  } | null>(null);
+  return {
+    confirmDelete: (options: DeleteConfirmationOptions) =>
+      setRequest({ options, key: crypto.randomUUID() }),
+    confirmation: request ? (
+      <DeleteConfirmation
+        key={request.key}
+        {...request.options}
+        onDone={() => setRequest(null)}
+      />
+    ) : null,
+  };
+}
+
 export type FieldSpec = {
   key: string;
   label: string;
