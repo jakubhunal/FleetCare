@@ -1145,6 +1145,10 @@ dialog::backdrop {
 .dialog-body {
   padding: 25px;
 }
+.service-plan-save-question {
+  margin-top: -4px;
+  margin-bottom: 16px;
+}
 .dialog-body > p {
   font-size: var(--font-small);
 }

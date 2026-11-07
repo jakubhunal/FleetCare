@@ -1,6 +1,10 @@
+import {
+  individualPlanSave,
+  planFormErrors,
+  validatePlanItems,
+} from "../lib/service-plan-save";
 import { odometerErrors } from "../lib/form-validation";
-import { z } from "zod";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
   type Entity,
@@ -10,6 +14,7 @@ import {
   type Order,
   type Actor,
   tripStatus,
+  planItemSchema,
 } from "../domain/models";
 import type { EditableCollection } from "../data/contracts";
 import { useFleet } from "../app/context";
@@ -19,6 +24,8 @@ import {
   Field,
   FilePicker,
   Form,
+  ViewToggle,
+  Notice,
   type FieldSpec,
 } from "../components/ui";
 import { DomainError } from "../domain/rules";
@@ -411,6 +418,7 @@ function PlanItems({
               <Trash2 size={17} />
             </Button>
           </div>
+          <p>Vyplňte alespoň jeden interval: kilometry nebo měsíce.</p>
           <div className="form-grid">
             {(
               [
@@ -422,7 +430,10 @@ function PlanItems({
                 "nextDate",
               ] as const
             ).map((key, k) => (
-              <Field key={key}>
+              <Field
+                key={key}
+                requiredMark={key === "intervalKm" || key === "intervalMonths"}
+              >
                 {
                   [
                     "Interval (km)",
@@ -437,6 +448,13 @@ function PlanItems({
                   name={`items.${i}.${key}`}
                   type={key.includes("Date") ? "date" : "text"}
                   inputMode={key.includes("Date") ? undefined : "numeric"}
+                  aria-required={
+                    key === "intervalKm"
+                      ? !(item.intervalMonths && item.intervalMonths > 0)
+                      : key === "intervalMonths"
+                        ? !(item.intervalKm && item.intervalKm > 0)
+                        : undefined
+                  }
                   value={item[key] ?? ""}
                   onChange={(e) =>
                     onChange(
@@ -483,6 +501,227 @@ function PlanItems({
     </div>
   );
 }
+function ServicePlanDialog({
+  vehicleId,
+  record,
+}: {
+  vehicleId: string;
+  record?: Records["plans"];
+}) {
+  const { s, run, close } = useFleet();
+  const [mode, setMode] = useState<"template" | "individual">(
+    record && !record.templateId ? "individual" : "template",
+  );
+  const [switchTo, setSwitchTo] = useState<"template" | "individual" | null>(
+    null,
+  );
+  const [templateId, setTemplateId] = useState(record?.templateId || "");
+  const [items, setItems] = useState<Records["plans"]["items"]>(
+    record?.items || [],
+  );
+  const [dirty, setDirty] = useState(false);
+  const [key] = useState(() => crypto.randomUUID());
+  const [step, setStep] = useState<"form" | "ask" | "name">("form");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const attempt = useRef<ReturnType<typeof individualPlanSave> | null>(null);
+  const persist = async (templateName?: string) => {
+    if (saving) return;
+    if (!attempt.current)
+      attempt.current = individualPlanSave({
+        key,
+        vehicleId,
+        category: s.vehicles.find((v) => v.id === vehicleId)?.category || "",
+        items,
+        templateName,
+      });
+    setSaving(true);
+    setSaveError("");
+    try {
+      await attempt.current.save(run);
+      close();
+    } catch (error) {
+      const progress = attempt.current.progress;
+      const warning = progress.templateSaved
+        ? "Šablona je uložená, ale uložení plánu nebylo potvrzeno. Opakujte uložení; další šablona se nevytvoří. "
+        : progress.templateAttempted
+          ? "Uložení nebylo dokončeno. Šablona již může být uložená. Opakováním dokončíte uložení bez vytvoření další šablony. "
+          : "";
+      setSaveError(
+        warning + (error instanceof Error ? error.message : "Uložení selhalo."),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+  const switchMode = (next: "template" | "individual") => {
+    setMode(next);
+    setTemplateId("");
+    setItems([]);
+    setSwitchTo(null);
+    setDirty(true);
+  };
+  return (
+    <Dialog
+      title={record ? "Upravit servisní plán" : "Přidat servisní plán"}
+      dirty={
+        !saving && !switchTo && (step === "form" ? dirty : !!attempt.current)
+      }
+      onClose={() => {
+        if (saving) return;
+        if (switchTo) setSwitchTo(null);
+        else if (step !== "form" && !attempt.current) setStep("form");
+        else close();
+      }}
+    >
+      <div className="dialog-body">
+        {switchTo && (
+          <div>
+            <p>Přepnutím se zahodí rozpracované úkony. Pokračovat?</p>
+            <div className="actions">
+              <Button onClick={() => setSwitchTo(null)}>Zrušit</Button>
+              <Button danger onClick={() => switchMode(switchTo)}>
+                Pokračovat
+              </Button>
+            </div>
+          </div>
+        )}
+        {step !== "form" && (
+          <div aria-busy={saving}>
+            <h3 className="service-plan-save-question">
+              Chcete uložit jako šablonu?
+            </h3>
+            {saveError && <Notice error>{saveError}</Notice>}
+            {step === "ask" ? (
+              <div className="actions">
+                <Button
+                  disabled={saving || !!attempt.current}
+                  onClick={() => setStep("name")}
+                >
+                  Ano
+                </Button>
+                <Button
+                  primary
+                  disabled={saving}
+                  onClick={() => void persist()}
+                >
+                  Ne
+                </Button>
+              </div>
+            ) : (
+              <Form
+                fields={[
+                  {
+                    key: "name",
+                    label: "Název šablony",
+                    required: true,
+                    disabled: !!attempt.current,
+                  },
+                ]}
+                onSubmit={async (values) => {
+                  await persist(String(values.name));
+                }}
+              />
+            )}
+          </div>
+        )}
+        <div hidden={!!switchTo || step !== "form"}>
+          <ViewToggle
+            label="Způsob vytvoření servisního plánu"
+            value={mode}
+            items={[
+              { value: "template", label: "Šablona" },
+              { value: "individual", label: "Individuální plán" },
+            ]}
+            onChange={(value) => {
+              const next = value as typeof mode;
+              if (next === mode) return;
+              if (templateId || items.length) setSwitchTo(next);
+              else switchMode(next);
+            }}
+          />
+          <Form
+            fields={[]}
+            validate={planFormErrors}
+            submitDisabled={
+              !record && mode === "individual" && items.length === 0
+            }
+            onDirty={(value) => {
+              if (value) setDirty(true);
+            }}
+            onSubmit={async () => {
+              validatePlanItems(items);
+              planItemSchema.array().parse(items);
+              if (mode === "individual" && !record) {
+                setStep("ask");
+                return;
+              }
+              await run(
+                {
+                  type: "save",
+                  collection: "plans",
+                  id: record?.id,
+                  version: record?.version,
+                  data: { vehicleId, templateId: templateId || null, items },
+                },
+                key,
+              );
+              close();
+            }}
+          >
+            {mode === "template" && (
+              <Field>
+                Šablona
+                <select
+                  value={templateId}
+                  onChange={(e) => {
+                    setTemplateId(e.target.value);
+                    const template = s.templates.find(
+                      (t) => t.id === e.target.value,
+                    );
+                    setItems(
+                      template
+                        ? template.items.map((i) => ({
+                            ...i,
+                            id: crypto.randomUUID(),
+                          }))
+                        : [],
+                    );
+                    setDirty(true);
+                  }}
+                >
+                  <option value="">
+                    {s.templates.length ? "Vyberte šablonu" : "Žádné šablony"}
+                  </option>
+                  {s.templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {mode === "template" && !s.templates.length && (
+              <p>
+                Nejsou k dispozici žádné šablony. Přepněte na Individuální plán.
+              </p>
+            )}
+            {(mode === "individual" || !!templateId) && (
+              <PlanItems
+                value={items}
+                onChange={(next) => {
+                  setItems(next);
+                  setDirty(true);
+                }}
+              />
+            )}
+          </Form>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 function Stops({
   value,
   onChange,
@@ -661,9 +900,6 @@ export function EntityEditor({
         ? record.qualifications
         : []) as Driver["qualifications"],
     );
-  const [templateId, setTemplateId] = useState(
-    record && "templateId" in record ? String(record.templateId || "") : "",
-  );
   const [items, setItems] = useState(
     (record && "items" in record
       ? record.items
@@ -724,7 +960,13 @@ export function EntityEditor({
       <div className="dialog-body">
         <Form
           fields={fields}
-          validate={collection === "trips" ? odometerErrors : undefined}
+          validate={
+            collection === "trips"
+              ? odometerErrors
+              : collection === "plans" || collection === "templates"
+                ? planFormErrors
+                : undefined
+          }
           initial={data}
           onDirty={setDirty}
           submit={startTrip ? "Zahájit jízdu" : "Uložit"}
@@ -787,23 +1029,8 @@ export function EntityEditor({
             if (collection === "templates" || collection === "plans")
               values.items = items;
             if (collection === "templates" || collection === "plans") {
-              const issues: z.core.$ZodIssue[] = [];
-              items.forEach((item, index) => {
-                if (
-                  !(
-                    (item.intervalKm ?? 0) > 0 || (item.intervalMonths ?? 0) > 0
-                  )
-                )
-                  for (const field of ["intervalKm", "intervalMonths"])
-                    issues.push({
-                      code: "custom",
-                      path: ["items", index, field],
-                      message: "Zadejte kladný interval v km nebo měsících.",
-                    });
-              });
-              if (issues.length) throw new z.ZodError(issues);
+              validatePlanItems(items);
             }
-            if (collection === "plans") values.templateId = templateId || null;
             if (collection === "orders") values.stops = stops;
             if (collection === "expenses") {
               values.kind = record && "kind" in record ? record.kind : "Výdaj";
@@ -896,39 +1123,6 @@ export function EntityEditor({
                 />
               )}
             </>
-          )}
-          {collection === "plans" && (
-            <Field>
-              Šablona
-              <select
-                value={templateId}
-                onChange={(e) => {
-                  setDirty(true);
-                  setTemplateId(e.target.value);
-                  const template = s.templates.find(
-                    (t) => t.id === e.target.value,
-                  );
-                  if (template)
-                    setItems(
-                      template.items.map((i) => ({
-                        ...i,
-                        id: crypto.randomUUID(),
-                      })),
-                    );
-                }}
-              >
-                <option value="">Individuální plán</option>
-                {s.templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <small>
-                Výběr šablony předvyplní úkony. Změny se uloží až potvrzením
-                formuláře.
-              </small>
-            </Field>
           )}
           {(collection === "templates" || collection === "plans") && (
             <PlanItems value={items} onChange={change(setItems)} />
@@ -1024,12 +1218,24 @@ export function useEditors() {
     startTrip = false,
   ) =>
     show(
-      <EntityEditor
-        key={crypto.randomUUID()}
-        collection={collection}
-        record={record}
-        defaults={defaults}
-        startTrip={startTrip}
-      />,
+      collection === "plans" ? (
+        <ServicePlanDialog
+          key={crypto.randomUUID()}
+          vehicleId={String(
+            (record && "vehicleId" in record
+              ? record.vehicleId
+              : defaults?.vehicleId) || "",
+          )}
+          record={record as Records["plans"] | undefined}
+        />
+      ) : (
+        <EntityEditor
+          key={crypto.randomUUID()}
+          collection={collection}
+          record={record}
+          defaults={defaults}
+          startTrip={startTrip}
+        />
+      ),
     );
 }

@@ -495,7 +495,7 @@ function ServicePlan({ vehicle }: { vehicle: Vehicle }) {
             primary
             onClick={() => edit("plans", p, { vehicleId: vehicle.id })}
           >
-            Vytvořit individuální plán
+            Přidat servisní plán
           </Button>
         }
         rows={p?.items || []}

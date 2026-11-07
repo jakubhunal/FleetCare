@@ -1,7 +1,7 @@
 import { useHistory } from "../lib/history";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useLocation } from "react-router";
+import { Link, useParams, useLocation, useNavigate } from "react-router";
 import { Upload, Download, Trash2, Pencil } from "lucide-react";
 import { useFleet, Confirm } from "../app/context";
 import type { Document } from "../domain/models";
@@ -326,13 +326,17 @@ export function DocumentList({
 export function DocumentPage() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { s, actor, repo, show, close, run } = useFleet();
   const doc = s.documents.find((d) => d.id === id && !d.deletedAt);
   const client = useQueryClient();
   const fallback = doc
     ? {
         vehicle: `/vehicles/${doc.ownerId}/documents`,
-        driver: `/drivers/${doc.ownerId}/documents`,
+        driver:
+          actor.role === "Řidič"
+            ? "/my/documents"
+            : `/drivers/${doc.ownerId}/documents`,
         order: `/orders/${doc.ownerId}`,
         expense: `/expenses/${doc.ownerId}`,
         fuel: `/fuels/${doc.ownerId}`,
@@ -347,6 +351,13 @@ export function DocumentPage() {
     !location.state.returnTo.startsWith("//")
       ? location.state.returnTo
       : fallback;
+  // Capture the destination before the successful delete removes the document.
+  const deleteTarget =
+    doc?.ownerType === "vehicle"
+      ? `/vehicles/${doc.vehicleId || doc.ownerId}/documents`
+      : /^\/documents(?:\/|[?#]|$)/.test(returnTo)
+        ? fallback
+        : returnTo;
   const labels: Record<string, string> = {
     vehicles: "Vozidla",
     drivers: "Řidiči",
@@ -458,9 +469,15 @@ export function DocumentPage() {
                         title="Smazat dokument"
                         description={`Opravdu smazat dokument „${doc.name}“?`}
                         onDone={close}
-                        action={() =>
-                          run({ type: "document.delete", id: doc.id })
-                        }
+                        action={async () => {
+                          await run({ type: "document.delete", id: doc.id });
+                          navigate(deleteTarget, {
+                            replace: true,
+                            state: location.state?.parentState || {
+                              tableQueries: location.state?.tableQueries,
+                            },
+                          });
+                        }}
                       />,
                     )
                   }

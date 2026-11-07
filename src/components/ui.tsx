@@ -359,6 +359,7 @@ export function Form({
   danger = false,
   onDirty,
   validate,
+  submitDisabled = false,
 }: {
   fields: FieldSpec[];
   initial?: Record<string, unknown>;
@@ -368,6 +369,7 @@ export function Form({
   danger?: boolean;
   onDirty?: (dirty: boolean) => void;
   validate?: (values: Record<string, unknown>) => Record<string, string>;
+  submitDisabled?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const hasField = (key: string) =>
@@ -378,7 +380,7 @@ export function Form({
   const [failure, setFailure] = useState("");
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (pending) return;
+    if (pending || submitDisabled) return;
     setErrors({});
     setFailure("");
     const invalid = nativeFieldErrors(e.currentTarget);
@@ -402,7 +404,10 @@ export function Form({
             f.type === "money" && n !== null ? Math.round(n * 100) : n;
         } else values[f.key] = raw;
       }
-      Object.assign(invalid, validate?.(values));
+      Object.assign(
+        invalid,
+        validate?.({ ...Object.fromEntries(fd), ...values }),
+      );
       if (Object.keys(invalid).length) {
         setErrors(invalid);
         return;
@@ -574,7 +579,7 @@ export function Form({
             primary={!danger}
             danger={danger}
             type="submit"
-            disabled={pending}
+            disabled={pending || submitDisabled}
           >
             {pending ? "Ukládání…" : submit}
           </Button>
@@ -839,6 +844,7 @@ export function HistorySwitch({
   );
 }
 export function ViewToggle({
+  label = "Zobrazení",
   value,
   onChange,
   items,
@@ -846,9 +852,10 @@ export function ViewToggle({
   value: string;
   onChange: (value: string) => void;
   items: { value: string; label: string; icon?: ReactNode }[];
+  label?: string;
 }) {
   return (
-    <div className="view-toggle" role="group" aria-label="Zobrazení">
+    <div className="view-toggle" role="group" aria-label={label}>
       {items.map((i) => (
         <button
           key={i.value}
@@ -900,8 +907,12 @@ const FieldErrors = createContext<Record<string, string>>({});
 export function Field({
   children,
   error: explicitError,
+  requiredMark,
   ...props
-}: LabelHTMLAttributes<HTMLLabelElement> & { error?: string }) {
+}: LabelHTMLAttributes<HTMLLabelElement> & {
+  error?: string;
+  requiredMark?: boolean;
+}) {
   const errors = useContext(FieldErrors);
   const generated = useId();
   let name = generated;
@@ -945,11 +956,14 @@ export function Field({
   return (
     <label {...props} className={`${props.className || ""} validated-field`}>
       <FieldLabel
-        required={Children.toArray(children).some(
-          (child) =>
-            isValidElement<InputHTMLAttributes<HTMLInputElement>>(child) &&
-            !!child.props.required,
-        )}
+        required={
+          requiredMark ??
+          Children.toArray(children).some(
+            (child) =>
+              isValidElement<InputHTMLAttributes<HTMLInputElement>>(child) &&
+              !!child.props.required,
+          )
+        }
       >
         {Children.toArray(children).filter(
           (child) =>
