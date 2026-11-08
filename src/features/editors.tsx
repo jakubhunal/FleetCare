@@ -950,10 +950,11 @@ export function EntityEditor({
   fields = fields.map((f) => ({
     ...f,
     disabled:
-      !!(incomplete && f.key !== "endKm") ||
+      !!(incomplete && !["endAt", "endKm"].includes(f.key)) ||
       !!(driverMode && trip && f.key === "startKm"),
     required:
       f.required ||
+      (f.key === "endAt" && !!trip && (driverMode || !!incomplete)) ||
       (f.key === "endKm" && !!trip && (driverMode || !!incomplete)),
     label: driverMode && f.key === "note" ? "Poznámka" : f.label,
   }));

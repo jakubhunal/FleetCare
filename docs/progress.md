@@ -1,5 +1,10 @@
 # FleetCare — stav předání
 
+## 2026-11-08 — Úprava konce neúplné jízdy řidičem
+
+- U neúplné jízdy může řidič upravit konečné datum i koncový tachometr. Ostatní pole zůstávají uzamčená; konečné datum je při úpravě povinné.
+- Ověření: typecheck, lint, produkční build a 79 testů (mimo HTTP testy vyžadující localhost) prošly. UI nebylo dostupné pro ruční kontrolu. Produkční build má stávající upozornění na velké JS chunky.
+
 ## 2026-11-08 — Oprávnění řidiče, výběr souborů a stavy zakázek
 
 - Řidičské oprávnění v editoru řidiče se vybírá z hodnot B, BE, C a CE; každý přidaný řádek má vlastní datum platnosti. Volný text kvalifikace zůstává beze změny.
