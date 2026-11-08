@@ -40,6 +40,11 @@ import { fileLimits, validateUpload } from "../src/data/uploads";
 import type { Command, JobStatus, UploadInput } from "../src/data/contracts";
 import type { StkExtraction } from "../src/domain/stk-extract";
 import { readStk } from "./stk-reader";
+import {
+  receiptMismatches,
+  type ReceiptExtraction,
+} from "../src/domain/receipt-extract";
+import { readReceipt } from "./receipt-reader";
 import { normalize } from "../src/lib/format";
 
 const env = process.env;
@@ -243,6 +248,7 @@ function addDocument(
   session: UploadSession,
   storageKey: string,
   stk?: StkExtraction,
+  receipt?: ReceiptExtraction,
 ) {
   const { input, file, stored } = session;
   const scope = scopedWorkspace(s, actor);
@@ -281,7 +287,19 @@ function addDocument(
       ((input.ownerType === "statement" && d.ownerType === "statement") ||
         (d.ownerId === input.ownerId && d.ownerType === input.ownerType)),
   );
-  if (duplicate) return { doc: duplicate, duplicate: true };
+  if (duplicate) {
+    // The same file uploaded again: a document stored before reading existed
+    // gets the reading now instead of keeping "Služba není připojena".
+    const reading = stk || receipt;
+    if (reading && duplicate.extraction === "not_configured")
+      Object.assign(duplicate, {
+        extraction: reading.state,
+        error: reading.error,
+        updatedAt: new Date().toISOString(),
+        version: duplicate.version + 1,
+      });
+    return { doc: duplicate, duplicate: true };
+  }
   let ownerId = input.ownerId;
   if (input.ownerType === "statement") {
     const statement = {
@@ -317,17 +335,19 @@ function addDocument(
     fileState: "stored",
     extraction: stk
       ? stk.state
-      : [
-            "Pracovní smlouva",
-            "Příloha",
-            "Dodací list",
-            "Servisní doklad",
-            "Pojištění",
-          ].includes(input.type)
-        ? "not_required"
-        : "not_configured",
+      : receipt
+        ? receipt.state
+        : [
+              "Pracovní smlouva",
+              "Příloha",
+              "Dodací list",
+              "Servisní doklad",
+              "Pojištění",
+            ].includes(input.type)
+          ? "not_required"
+          : "not_configured",
     jobId: null,
-    error: stk?.error || "",
+    error: stk?.error || receipt?.error || "",
     deletedAt: null,
   });
   // STK for an existing vehicle: check it is the same car, then move the STK
@@ -356,6 +376,27 @@ function addDocument(
         updatedAt: new Date().toISOString(),
         version: vehicle.version + 1,
       });
+  }
+  // Receipt for a fuel record: flag values that differ from the record.
+  const fuel =
+    receipt && receipt.state !== "failed" && input.ownerType === "fuel"
+      ? s.fuels.find((f) => f.id === ownerId)
+      : undefined;
+  if (fuel && receipt) {
+    const diffs = receiptMismatches(
+      fuel,
+      s.vehicles.find((v) => v.id === fuel.vehicleId),
+      receipt.fields,
+    );
+    if (diffs.length) {
+      doc.extraction = "incomplete";
+      doc.error = [
+        `Účtenka nesouhlasí se záznamem tankování: ${diffs.join(", ")}.`,
+        doc.error,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
   }
   s.documents.push(doc);
   return { doc, duplicate: false };
@@ -617,8 +658,19 @@ const server = createServer(async (req, res) => {
         session.input.type === "STK"
           ? await readStk(session.stored!.path, session.file.mime)
           : undefined;
+      const receipt =
+        session.input.type === "Účtenka"
+          ? await readReceipt(
+              // An unreadable file ends as a failed reading, not a 502.
+              await readFile(session.stored!.path).then(
+                (b) => new Uint8Array(b),
+                () => new Uint8Array(),
+              ),
+              session.file.mime,
+            )
+          : undefined;
       const { doc, duplicate } = await mutate((next) =>
-        addDocument(next, session.actor, session, storageKey, stk),
+        addDocument(next, session.actor, session, storageKey, stk, receipt),
       );
       if (duplicate) await rm(session.stored!.path, { force: true });
       else await rename(session.stored!.path, join(filesDir, storageKey));
@@ -631,15 +683,44 @@ const server = createServer(async (req, res) => {
               missingFields: stk.missingFields,
               error: doc.error || undefined,
             }
-          : {
-              jobId: doc.id,
-              state:
-                doc.extraction === "not_required" || duplicate
-                  ? "completed"
-                  : "not_configured",
-            };
+          : receipt
+            ? {
+                jobId: doc.id,
+                state: doc.extraction as JobStatus["state"],
+                missingFields: receipt.missingFields,
+                error: doc.error || undefined,
+              }
+            : {
+                jobId: doc.id,
+                state:
+                  doc.extraction === "not_required" || duplicate
+                    ? "completed"
+                    : "not_configured",
+              };
       jobs.set(doc.id, session.result);
       return json(res, 200, session.result);
+    }
+    if (req.method === "POST" && path === "/v1/receipts/read") {
+      // Reads a receipt before the fuel record exists, so the form can be
+      // filled from it. Nothing is stored; the upload itself follows later.
+      actorOf(req);
+      const mime = String(req.headers["content-type"] || "").split(";")[0];
+      if (!fileLimits.mimes.includes(mime))
+        fail(415, "Povolené jsou pouze PDF, JPG a PNG.");
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > fileLimits.extractionBytes)
+          fail(413, "Soubor pro extrakci překračuje 5 MB.");
+        chunks.push(chunk);
+      }
+      if (!size) fail(422, "Soubor je prázdný.");
+      return json(
+        res,
+        200,
+        await readReceipt(new Uint8Array(Buffer.concat(chunks)), mime),
+      );
     }
     const file = path.match(/^\/v1\/documents\/([^/]+)\/content$/);
     if (req.method === "GET" && file) {

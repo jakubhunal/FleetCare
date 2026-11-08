@@ -181,6 +181,29 @@ const document = {
         },
       },
     },
+    "/receipts/read": {
+      post: {
+        summary:
+          "Přečte údaje z tankovací účtenky (PDF s textovou vrstvou) bez uložení, aby šel předvyplnit formulář tankování. Fotografie vrací failed s důvodem.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/pdf": { schema: { type: "string", format: "binary" } },
+            "image/jpeg": { schema: { type: "string", format: "binary" } },
+            "image/png": { schema: { type: "string", format: "binary" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Výsledek čtení",
+            content: json(ref("ReceiptRead")),
+          },
+          "413": error,
+          "415": error,
+          "422": error,
+        },
+      },
+    },
     "/jobs/{jobId}": {
       get: {
         summary:
@@ -319,6 +342,38 @@ const document = {
               size: { type: "integer", minimum: 1, maximum: 20971520 },
             },
           },
+        },
+      },
+      ReceiptRead: {
+        type: "object",
+        required: ["state", "fields", "missingFields", "error"],
+        properties: {
+          state: {
+            enum: ["completed", "incomplete", "failed", "not_configured"],
+          },
+          fields: {
+            type: "object",
+            description:
+              "Údaje přečtené z účtenky; chybějící nebo nečitelné hodnoty se vynechají.",
+            properties: {
+              spz: { type: "string" },
+              vin: { type: "string" },
+              driverName: { type: "string" },
+              date: { type: "string", format: "date" },
+              time: { type: "string", pattern: "^\\d{2}:\\d{2}$" },
+              amountMinor: { type: "integer" },
+              currency: { type: "string" },
+              vat: { enum: ["Včetně DPH", "Bez DPH"] },
+              litres: { type: "number" },
+              fuel: { type: "string" },
+              km: { type: "number" },
+              station: { type: "string" },
+              receiptNo: { type: "string" },
+              cardNumber: { type: "string" },
+            },
+          },
+          missingFields: { type: "array", items: { type: "string" } },
+          error: { type: "string" },
         },
       },
       Job: {

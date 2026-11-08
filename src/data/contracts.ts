@@ -1,4 +1,5 @@
 import type { StkFields } from "../domain/stk-extract";
+import type { ReceiptRead } from "../domain/receipt-extract";
 import type { Actor, Collection, Document, Workspace } from "../domain/models";
 export type EditableCollection = Extract<
   Collection,
@@ -151,4 +152,10 @@ export interface Repository {
   ): Promise<JobStatus[]>;
   file(actor: Actor, id: string, signal?: AbortSignal): Promise<Blob>;
   job(actor: Actor, id: string, signal?: AbortSignal): Promise<JobStatus>;
+  /** Reads a fuel receipt without storing it (to fill the fuel form). */
+  readReceipt(
+    actor: Actor,
+    file: File,
+    signal?: AbortSignal,
+  ): Promise<ReceiptRead>;
 }

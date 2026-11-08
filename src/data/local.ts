@@ -211,6 +211,16 @@ export class LocalRepository implements Repository {
     void actor;
     return { jobId: id, state: "not_configured" as const };
   }
+  async readReceipt(actor: Actor, file: File) {
+    void actor;
+    void file;
+    return {
+      state: "not_configured" as const,
+      fields: {},
+      missingFields: [],
+      error: "Čtení účtenek není v tomto režimu připojené.",
+    };
+  }
 }
 async function hash(blob: Blob) {
   const digest = await crypto.subtle.digest(

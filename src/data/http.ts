@@ -5,8 +5,9 @@ import { DomainError } from "../domain/rules";
 import { scopedWorkspace } from "../domain/rules";
 import { authorizeCommand } from "../domain/access";
 import { commandSchema } from "./command-schema";
-import { validateUpload } from "./uploads";
+import { fileLimits, validateUpload } from "./uploads";
 import { stkFieldsSchema } from "../domain/stk-extract";
+import { receiptReadSchema } from "../domain/receipt-extract";
 const searchSchema = z.array(
   z.object({
     id: z.string(),
@@ -223,6 +224,24 @@ export class HttpRepository implements Repository {
     if (!["application/pdf", "image/jpeg", "image/png"].includes(blob.type))
       throw new DomainError("Server vrátil nepodporovaný obsah dokumentu.");
     return blob;
+  }
+  async readReceipt(actor: Actor, file: File, signal?: AbortSignal) {
+    if (!fileLimits.mimes.includes(file.type))
+      throw new DomainError("Povolené jsou pouze PDF, JPG a PNG.");
+    if (file.size > fileLimits.extractionBytes)
+      throw new DomainError(
+        "Soubor pro extrakci překračuje 5 MB. Dodejte menší podklad.",
+      );
+    return receiptReadSchema.parse(
+      await (
+        await this.request("/receipts/read", actor, {
+          method: "POST",
+          body: file,
+          headers: { "Content-Type": file.type },
+          signal,
+        })
+      ).json(),
+    );
   }
   async job(actor: Actor, id: string, signal?: AbortSignal) {
     return jobSchema.parse(

@@ -471,7 +471,10 @@ export function Form({
   onDirty,
   validate,
   submitDisabled = false,
+  lead,
 }: {
+  /** Content above the fields (e.g. a file the fields are read from). */
+  lead?: ReactNode;
   fields: FieldSpec[];
   initial?: Record<string, unknown>;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
@@ -576,6 +579,7 @@ export function Form({
             );
         }}
       >
+        {lead}
         <div className="form-grid">
           {fields.map((f) => {
             const value = initial[f.key] ?? f.initial ?? "";

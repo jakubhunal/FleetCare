@@ -83,7 +83,7 @@ export function parseCzDate(raw: string) {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-const parsers = {
+export const parsers = {
   spz: (raw: string) => {
     const v = cleanValue(raw).toUpperCase();
     return /^[A-Z0-9][A-Z0-9 -]{3,8}[A-Z0-9]$/.test(v) && /\d/.test(v)
@@ -105,7 +105,7 @@ const parsers = {
 };
 
 /** Value of a label: the item right below it (form layout) or right of it. */
-function valueOf<T>(
+export function valueOf<T>(
   items: TextItem[],
   patterns: RegExp[],
   parse: (raw: string) => T | undefined,

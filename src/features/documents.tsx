@@ -100,6 +100,13 @@ export function UploadDialog({
                       ? `STK načtena z PDF, platnost do ${date(stk.fields.stkUntil)}.`
                       : stk.error || "STK uložena.",
                   );
+                if (docType === "Účtenka" && jobs.length)
+                  toast(
+                    jobs.find((j) => j.error)?.error ||
+                      (jobs.every((j) => j.state === "completed")
+                        ? "Účtenka načtena, údaje souhlasí se záznamem tankování."
+                        : "Účtenka uložena."),
+                  );
               }
             } catch (err) {
               setError(err instanceof Error ? err.message : "Uložení selhalo.");
