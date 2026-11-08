@@ -1,10 +1,10 @@
 import { StatusChip } from "../components/status-chip";
 import { ccsOptions } from "../lib/status";
-import { DocumentLink } from "./documents";
+import { StatementPdfLink, statementDocuments } from "./statement-pdf";
 import { fuelDifferences, fuelState, transactionState } from "../domain/ccs";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { Plus, Upload, FileText, Pencil } from "lucide-react";
+import { Plus, Upload, Pencil } from "lucide-react";
 import { useFleet } from "../app/context";
 import {
   Back,
@@ -125,6 +125,16 @@ export function CostsPage() {
                           {x.complete ? "Úplný" : "Neúplný / nezpracovaný"}
                         </small>
                       </>
+                    ),
+                  },
+                  {
+                    key: "pdf",
+                    label: "",
+                    render: (x) => (
+                      <StatementPdfLink
+                        iconOnly
+                        document={statementDocuments(s, x.id)[0]}
+                      />
                     ),
                   },
                 ]}
@@ -299,22 +309,9 @@ export function StatementPage() {
       <PageHead
         title={x.name}
         subtitle={"Přijato " + date(x.receivedAt, true)}
-        actions={s.documents
-          .filter(
-            (d) =>
-              d.ownerType === "statement" && d.ownerId === x.id && !d.deletedAt,
-          )
-          .map((d) => (
-            <DocumentLink
-              className="btn"
-              key={d.id}
-              to={`/documents/${d.id}`}
-              title={d.name}
-            >
-              <FileText size={17} />
-              Zobrazit výpis (PDF)
-            </DocumentLink>
-          ))}
+        actions={statementDocuments(s, x.id).map((d) => (
+          <StatementPdfLink key={d.id} document={d} />
+        ))}
       />
       <Panel title="Údaje výpisu">
         <DataGrid
@@ -425,11 +422,6 @@ export function TransactionPage() {
               ],
               ["Odůvodnění", t.resolution || null],
             ]}
-          />
-          <DocumentList
-            ownerType="statement"
-            ownerId={t.statementId}
-            add={false}
           />
         </Panel>
         <Panel title="Záznam řidiče">

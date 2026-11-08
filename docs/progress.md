@@ -252,3 +252,8 @@ Dávka 9: přiřazení zakázky používá společný přístupný autocomplete,
 
 Dávka 10: v detailu tankování odstraněno přimíchávání CCS dokumentů do tabulky řidiče; samotný CCS panel už vlastní dokumenty neměl. Ostatní dokumentové pohledy, data a layout zachovány. Typecheck, lint a 8 souvisejících testů prošly; viz docs/fe-audit-8-10.md.
 Dávky 8–10 závěr: všech 85 testů, typecheck, lint a produkční build prošly. Chromium 1440/390 px ověřil hierarchické šipky versus browser Back, reload, dokumentový URL kontext, autocomplete včetně klávesnice a uložení i oddělení dokladů tankování. Bez běhových chyb. Backend/modely/API/závislosti nezměněny.
+
+Dávka 11 / bod 1: sdílené otevření PDF v detailu i tabulce CCS výpisů; poslední ikonový sloupec, disabled bez dokumentu, URL návrat na seznam. Typecheck, lint a související testy prošly. Podrobnosti: docs/fe-audit-11.md.
+
+Dávka 11 / bod 2: odstraněn DocumentList pouze z levého CCS panelu TransactionPage dle screenshotu; obě navigační cesty a správní role sdílejí tuto komponentu. Předchozí dávka tento samostatný pohled výslovně ponechávala mimo rozsah. Doklady řidiče a otevření PDF výpisu zachovány, bez změny dat/API/modelů. Viz docs/fe-audit-11.md.
+Dávka 11: oba body prošly typecheckem, lintem a souvisejícími testy; celá sada 86 testů/25 souborů prošla. Chromium ověřil oba správní kontexty a obě cesty k transakci na desktopu/mobilu, disabled PDF akci, návrat po reloadu a zachování dokladů řidiče bez běhových chyb. Žádný zásah do backendu/modelů/API ani závislostí.
