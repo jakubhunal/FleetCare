@@ -1,4 +1,3 @@
-import { Autocomplete } from "../components/autocomplete";
 import { StatusChip } from "../components/status-chip";
 import {
   canNotifyTrip,
@@ -26,7 +25,11 @@ import {
 import { DocumentList } from "./documents";
 import { useEditors } from "./editors";
 import { DRef, FaultTable, OrderTable, TripsTable, VRef } from "./tables";
-import { a6Due, activeAssignment, suitability } from "../domain/rules";
+import {
+  a6Due,
+  activeAssignment,
+  orderAssignmentCandidates,
+} from "../domain/rules";
 import {
   date,
   localTime,
@@ -181,18 +184,14 @@ export function OrderAssignmentDialog({ orderId }: { orderId: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   if (!o || actor.role === "Řidič") return null;
-  const vehicle = s.vehicles.find((v) => v.id === vehicleId) || null;
-  const vehicles = s.vehicles
-    .map((v) => ({ v, r: suitability(s, o, v, null) }))
-    .filter((x) => x.r.state === "Vhodné");
-  const drivers = vehicle
-    ? s.drivers
-        .map((d) => ({ d, r: suitability(s, o, vehicle, d) }))
-        .filter((x) => x.r.state === "Vhodné")
-    : [];
-  const valid =
-    vehicles.some((x) => x.v.id === vehicleId) &&
-    drivers.some((x) => x.d.id === driverId);
+  const candidates = orderAssignmentCandidates(s, o);
+  const selected = candidates.find(
+    (pair) => pair.vehicle.id === vehicleId && pair.driver.id === driverId,
+  );
+  const blocked =
+    !selected ||
+    selected.result.state === "Nevhodné" ||
+    selected.conflicts.length > 0;
   return (
     <Dialog
       title="Přiřadit vozidlo a řidiče"
@@ -202,51 +201,94 @@ export function OrderAssignmentDialog({ orderId }: { orderId: string }) {
       }
     >
       <div className="dialog-body">
-        <div className="two-columns">
-          <Panel title="Vozidlo">
-            <Autocomplete
-              label="Vybrat vozidlo"
-              value={vehicleId}
-              options={vehicles.map(({ v }) => ({
-                value: v.id,
-                label: v.spz + " · " + v.model,
-                search: v.spz,
-              }))}
-              onChange={(id) => {
-                setVehicle(id);
-                setDriver("");
-              }}
-            />
-          </Panel>
-          <Panel title="Řidič zakázky">
-            <Autocomplete
-              label="Vybrat řidiče"
-              value={driverId}
-              words
-              disabled={!vehicleId}
-              options={drivers.map(({ d }) => ({
-                value: d.id,
-                label: d.name,
-                search: d.name,
-              }))}
-              onChange={setDriver}
-            />
-          </Panel>
-        </div>
+        <p>
+          Vyberte aktuální přidělený pár vozidla a řidiče. Páry s potvrzeným
+          konfliktem nebo jinou otevřenou zakázkou nelze zvolit; chybějící údaje
+          jsou zobrazené jako upozornění.
+        </p>
+        {candidates.length ? (
+          <fieldset className="assignment-pairs">
+            <legend>Aktuální páry vozidlo – řidič</legend>
+            {candidates.map((pair) => {
+              const isSelected =
+                pair.vehicle.id === vehicleId && pair.driver.id === driverId;
+              const pairBlocked =
+                pair.result.state === "Nevhodné" ||
+                pair.conflicts.length > 0;
+              const reasons = [
+                ...pair.result.reasons,
+                ...pair.conflicts.map((conflict) => {
+                  const resources = [
+                    ...(conflict.vehicleId === pair.vehicle.id
+                      ? ["vozidlo"]
+                      : []),
+                    ...(conflict.driverId === pair.driver.id
+                      ? ["řidič"]
+                      : []),
+                  ];
+                  return `${resources.join(" a ")} už má otevřenou zakázku ${conflict.number} (${conflict.state}).`;
+                }),
+              ];
+              return (
+                <label
+                  className={`candidate ${isSelected ? "selected" : ""} ${pairBlocked ? "unavailable" : ""}`}
+                  key={`${pair.vehicle.id}-${pair.driver.id}`}
+                >
+                  <input
+                    type="radio"
+                    name="order-assignment-pair"
+                    checked={isSelected}
+                    disabled={pairBlocked}
+                    onChange={() => {
+                      setVehicle(pair.vehicle.id);
+                      setDriver(pair.driver.id);
+                    }}
+                  />
+                  <div className="candidate-content">
+                    <strong>
+                      {pair.vehicle.spz} · {pair.vehicle.model}
+                    </strong>
+                    <p>{pair.driver.name}</p>
+                    {!!reasons.length && (
+                      <ul className="candidate-reasons">
+                        {reasons.map((reason, index) => (
+                          <li key={`${index}-${reason}`}>{reason}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {pair.conflicts.length ? (
+                    <span className="badge red">Obsazeno zakázkou</span>
+                  ) : (
+                    <StatusChip
+                      entity="generic"
+                      value={pair.result.state}
+                    />
+                  )}
+                </label>
+              );
+            })}
+          </fieldset>
+        ) : (
+          <Notice>
+            Nejsou evidována žádná aktuální přidělení vozidla řidiči.
+          </Notice>
+        )}
         {error && <Notice error>{error}</Notice>}
         <div className="form-actions">
           <Button
             primary
-            disabled={!valid || busy}
+            disabled={blocked || busy}
             onClick={async () => {
+              if (!selected) return;
               setBusy(true);
               try {
                 await run({
                   type: "order.assign",
                   id: o.id,
                   version: o.version,
-                  vehicleId,
-                  driverId,
+                  vehicleId: selected.vehicle.id,
+                  driverId: selected.driver.id,
                 });
                 close();
               } catch (e) {

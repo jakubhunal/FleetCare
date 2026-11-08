@@ -1,5 +1,21 @@
 # FleetCare — stav předání
 
+## 2026-11-08 — Přidělování zakázek přes aktivní páry
+
+- Dialog přiřazení nabízí aktuální páry podle aktivních přidělení vozidlo–řidič. U každého zobrazuje stav vhodnosti i konkrétní důvody, včetně dalších zakázek ve stavu „Přiřazená“ nebo „Probíhá“ přiřazených stejnému vozidlu či řidiči. Páry s potvrzeným konfliktem nebo jinou otevřenou zakázkou nelze vybrat; neúplné údaje jsou varováním a zachovávají možnost uložení.
+- Doménový příkaz znovu kontroluje otevřené zakázky. Testy pokrývají aktivní páry, historická/future přiřazení, kolize a blokaci v command handleru.
+- Ověření: typecheck, lint, produkční build a 85 testů (mimo HTTP testy vyžadující localhost) prošly. Produkční build má stávající upozornění na velké JS chunky. Ruční UI kontrola nebyla provedena.
+
+## 2026-11-08 — Výchozí stav tankování z nahrané účtenky
+
+- Tankování založené formulářem „Nahrát tankovací účtenku“ nově začíná ve stavu „Čeká na výpis“.
+- Ověření: typecheck, lint, produkční build a 81 testů (mimo HTTP testy vyžadující localhost) prošly. Build má stávající upozornění na velké JS chunky.
+
+## 2026-11-08 — Zakázky řidiče při zahájení jízdy
+
+- Při zahájení jízdy se řidiči v nabídce zakázek zobrazí pouze jeho zakázky ve stavu „Přiřazená“. Ostatní formuláře a role mají nabídku beze změny.
+- Ověření: typecheck, lint, produkční build a 81 testů (mimo HTTP testy vyžadující localhost) prošly. Nové testy pokrývají filtrování podle stavu i řidiče a zachování nabídky pro ostatní role/formuláře. Ruční UI kontrola nebyla provedena.
+
 ## 2026-11-08 — Úprava konce neúplné jízdy řidičem
 
 - U neúplné jízdy může řidič upravit konečné datum i koncový tachometr. Ostatní pole zůstávají uzamčená; konečné datum je při úpravě povinné.

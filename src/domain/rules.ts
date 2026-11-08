@@ -170,6 +170,53 @@ export function suitability(
     reasons: [...bad, ...missing.map((x) => "Chybí " + x)],
   };
 }
+export const openOrderAssignmentStates: ReadonlySet<string> = new Set([
+  "Přiřazená",
+  "Probíhá",
+]);
+export function orderAssignmentConflicts(
+  s: Workspace,
+  orderId: string,
+  vehicleId: string,
+  driverId: string,
+) {
+  return s.orders.filter(
+    (order) =>
+      order.id !== orderId &&
+      openOrderAssignmentStates.has(order.state) &&
+      (order.vehicleId === vehicleId || order.driverId === driverId),
+  );
+}
+export function orderAssignmentCandidates(
+  s: Workspace,
+  order: Order,
+  at = new Date().toISOString(),
+) {
+  const seen = new Set<string>();
+  return s.assignments.flatMap((assignment) => {
+    if (assignment.from > at || (assignment.to && assignment.to <= at))
+      return [];
+    const vehicle = s.vehicles.find((v) => v.id === assignment.vehicleId);
+    const driver = s.drivers.find((d) => d.id === assignment.driverId);
+    if (!vehicle || !driver) return [];
+    const key = `${vehicle.id}\u0000${driver.id}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [
+      {
+        vehicle,
+        driver,
+        result: suitability(s, order, vehicle, driver),
+        conflicts: orderAssignmentConflicts(
+          s,
+          order.id,
+          vehicle.id,
+          driver.id,
+        ),
+      },
+    ];
+  });
+}
 export function validateTrip(s: Workspace, t: Trip) {
   if (!t.orderId && !t.purpose.trim())
     throw new DomainError(

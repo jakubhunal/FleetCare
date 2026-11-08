@@ -605,6 +605,29 @@ describe("Opravy z testů 7. 11.", () => {
       }),
     ).toThrow(/Nedostatečná kapacita/);
   });
+  it("nepřiřadí posádku, která má jinou otevřenou zakázku", () => {
+    const s = fixture();
+    s.orders.push(
+      collections.orders.parse({
+        ...s.orders[0],
+        ...meta("o2"),
+        number: "TEST-002",
+        vehicleId: "v1",
+        driverId: "d1",
+        state: "Přiřazená",
+      }),
+    );
+
+    expect(() =>
+      applyCommand(s, manager, {
+        type: "order.assign",
+        id: "o1",
+        version: 1,
+        vehicleId: "v1",
+        driverId: "d1",
+      }),
+    ).toThrow("Vozidlo nebo řidič už má otevřenou zakázku: TEST-002.");
+  });
   it("nové vozidlo převezme STK nahranou přes Nahrát STK", () => {
     const s = fixture();
     s.documents.push(

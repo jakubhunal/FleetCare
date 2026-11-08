@@ -59,6 +59,7 @@ export function editorFields(
   s: Workspace,
   actor: Actor,
   existing = false,
+  startTrip = false,
 ): FieldSpec[] {
   const vehicle = f("vehicleId", "Vozidlo", "select", true, {
       options: s.vehicles.map((v) => [v.id, v.spz + " · " + v.model]),
@@ -153,7 +154,15 @@ export function editorFields(
         vehicle,
         driver,
         f("orderId", "Zakázka", "select", false, {
-          options: s.orders.map((o) => [o.id, o.number]),
+          options: s.orders
+            .filter(
+              (o) =>
+                actor.role !== "Řidič" ||
+                (startTrip
+                  ? o.state === "Přiřazená" && o.driverId === actor.driverId
+                  : o.driverId === actor.driverId),
+            )
+            .map((o) => [o.id, o.number]),
         }),
         f("purpose", "Účel samostatné jízdy"),
         f("from", "Počáteční místo", "text", true),
@@ -939,7 +948,7 @@ export function EntityEditor({
   const trip =
     collection === "trips" && record ? (record as Records["trips"]) : null;
   const incomplete = trip && tripStatus(trip) === "Ukončena neúplná";
-  let fields = editorFields(collection, s, actor, !!record).filter(
+  let fields = editorFields(collection, s, actor, !!record, startTrip).filter(
     (f) =>
       !(
         driverMode &&

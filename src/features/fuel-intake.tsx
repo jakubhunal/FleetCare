@@ -88,7 +88,7 @@ export function FuelIntakeDialog({ vehicleId }: { vehicleId?: string }) {
                   id,
                   at: toPragueTimestamp(String(values.at)),
                   full: "Není doloženo",
-                  state: "Neúplný podklad",
+                  state: "Čeká na výpis",
                 },
               },
               id + "-record",

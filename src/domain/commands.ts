@@ -13,6 +13,7 @@ import {
   availableVehicles,
   DomainError,
   manager,
+  orderAssignmentConflicts,
   suitability,
   validateTrip,
 } from "./rules";
@@ -502,9 +503,19 @@ export function applyCommand(
       find(s, "vehicles", c.vehicleId),
       find(s, "drivers", c.driverId),
     );
-    // Missing data ("Nelze vyhodnotit") is shown as a warning in the dialog;
-    // only a confirmed conflict blocks the assignment.
+    // Missing data ("Nelze vyhodnotit") is a warning; confirmed mismatches and
+    // an existing open assignment to the same vehicle or driver block saving.
     ensure(result.state !== "Nevhodné", result.reasons.join(" · "));
+    const conflicts = orderAssignmentConflicts(
+      s,
+      o.id,
+      c.vehicleId,
+      c.driverId,
+    );
+    ensure(
+      !conflicts.length,
+      `Vozidlo nebo řidič už má otevřenou zakázku: ${conflicts.map((x) => x.number).join(", ")}.`,
+    );
     Object.assign(o, touch(o), {
       vehicleId: c.vehicleId,
       driverId: c.driverId,
