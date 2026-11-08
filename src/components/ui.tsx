@@ -1158,7 +1158,6 @@ export function FilePicker({
   label = "Vybrat soubory",
   accept = "application/pdf,image/jpeg,image/png",
   multiple = true,
-  camera = false,
   name = "files",
   error,
   maxBytes = fileLimits.storageBytes,
@@ -1169,7 +1168,6 @@ export function FilePicker({
   label?: string;
   accept?: string;
   multiple?: boolean;
-  camera?: boolean;
   name?: string;
   error?: string;
 }) {
@@ -1199,7 +1197,6 @@ export function FilePicker({
     onChange(next);
   };
   const ref = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   return (
     <div className="file-picker">
       <div
@@ -1229,25 +1226,6 @@ export function FilePicker({
           }}
         />
       </div>
-      {camera && (
-        <>
-          <Button onClick={() => cameraRef.current?.click()}>
-            Vyfotit účtenku
-          </Button>
-          <input
-            className="visually-hidden"
-            ref={cameraRef}
-            type="file"
-            aria-label="Vyfotit účtenku"
-            accept="image/jpeg,image/png"
-            capture="environment"
-            onChange={(e) => {
-              add(Array.from(e.target.files || []));
-              e.target.value = "";
-            }}
-          />
-        </>
-      )}
       {!!rejected.length && (
         <ul className="field-error" role="alert">
           {rejected.map((message, i) => (

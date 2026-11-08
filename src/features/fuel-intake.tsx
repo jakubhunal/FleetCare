@@ -111,7 +111,6 @@ export function FuelIntakeDialog({ vehicleId }: { vehicleId?: string }) {
             files={files}
             onChange={setFiles}
             label="Vybrat účtenku"
-            camera
           />
         </Form>
       </div>

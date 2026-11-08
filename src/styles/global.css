@@ -1171,9 +1171,6 @@ dialog::backdrop {
   background: transparent;
   font-size: var(--font-small);
 }
-.camera-input {
-  margin: 20px 0;
-}
 .document-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);

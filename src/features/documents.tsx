@@ -139,7 +139,6 @@ export function UploadDialog({
             error={error}
             onChange={setSelected}
             label="Vybrat soubory"
-            camera={docType === "Účtenka"}
           />
           <small>Až {fileLimits.maxFiles} souborů. PDF, JPG nebo PNG.</small>
           <div className="form-actions">

@@ -210,6 +210,78 @@ describe("Provozní pravidla", () => {
     });
     expect(complete.trips[0].state).toBe("K ověření");
   });
+  it("zahájení a dokončení jízdy synchronizuje stav přidělené zakázky", () => {
+    const s = fixture();
+    applyCommand(s, manager, {
+      type: "order.assign",
+      id: "o1",
+      version: 1,
+      vehicleId: "v1",
+      driverId: "d1",
+    });
+    applyCommand(s, manager, {
+      type: "trip.start",
+      data: {
+        vehicleId: "v1",
+        driverId: "d1",
+        orderId: "o1",
+        from: "A",
+        startAt: "2026-11-02T08:00:00Z",
+        startKm: 100,
+      },
+    });
+    expect(s.orders[0].state).toBe("Probíhá");
+    applyCommand(s, manager, {
+      type: "save",
+      collection: "trips",
+      id: s.trips[0].id,
+      version: 1,
+      data: {
+        endAt: "2026-11-02T11:00:00Z",
+        endKm: 150,
+        to: "B",
+      },
+    });
+    expect(s.orders[0].state).toBe("Dokončená");
+  });
+  it("neúplná jízda dokončí zakázku až po doplnění koncového km", () => {
+    const s = fixture();
+    applyCommand(s, manager, {
+      type: "order.assign",
+      id: "o1",
+      version: 1,
+      vehicleId: "v1",
+      driverId: "d1",
+    });
+    applyCommand(s, manager, {
+      type: "trip.start",
+      data: {
+        vehicleId: "v1",
+        driverId: "d1",
+        orderId: "o1",
+        from: "A",
+        startAt: "2026-11-02T08:00:00Z",
+        startKm: 100,
+      },
+    });
+    const tripId = s.trips[0].id;
+    applyCommand(s, manager, {
+      type: "save",
+      collection: "trips",
+      id: tripId,
+      version: 1,
+      data: { endAt: "2026-11-02T11:00:00Z", to: "B" },
+    });
+    expect(s.orders[0].state).toBe("Probíhá");
+    applyCommand(s, manager, {
+      type: "save",
+      collection: "trips",
+      id: tripId,
+      version: 2,
+      data: { endKm: 150 },
+    });
+    expect(s.orders[0].state).toBe("Dokončená");
+  });
   it("blokuje překryv a zpětný tachometr", () => {
     const s = fixture();
     const t = collections.trips.parse({

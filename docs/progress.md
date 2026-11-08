@@ -1,5 +1,12 @@
 # FleetCare — stav předání
 
+## 2026-11-08 — Oprávnění řidiče, výběr souborů a stavy zakázek
+
+- Řidičské oprávnění v editoru řidiče se vybírá z hodnot B, BE, C a CE; každý přidaný řádek má vlastní datum platnosti. Volný text kvalifikace zůstává beze změny.
+- Z obecného výběru souborů bylo odstraněno focení účtenky, včetně použití při nahrání účtenky i při přikládání dokladů.
+- Zahájení jízdy mění přidělenou zakázku z „Přiřazená“ na „Probíhá“. Při zadání konce i koncového tachometru se zakázka změní na „Dokončená“. Neúplná jízda bez koncového tachometru zakázku nedokončí. Přidán doménový test celého přechodu.
+- Ověření: typecheck a lint prošly; 87 testů včetně obou přechodů zakázky prošlo; produkční build prošel s dosavadním upozorněním na velké JS chunky. Chromium ověřil desktopový dialog řidiče, volby B/BE/C/CE a samostatná data platnosti pro více řádků; změny formuláře byly zahozeny bez uložení. Mobilní šířku nelze v této relaci nastavit přes připojené UI rozhraní. Commit/push nebyl proveden: žádost o oprávnění k zápisu do Git metadata byla zamítnuta.
+
 - Tankování: formulář i nahrání účtenky vyžadují kladné litry a částku. Kontrolu opakuje doménový příkaz, HTTP command schema a Sheets gateway; mapování ukládá číselné hodnoty do `litres`, `amount_czk` a `ccs_amount_czk`. Typecheck, lint, 48 testů, syntaxe gatewaye i produkční build prošly; UI ověřilo, že prázdné hodnoty zastaví obě cesty před uložením.
 
 - Termíny: formulář vyžaduje vozidlo i datum. Doménový zápis ověřuje, že vozidlo existuje; Sheets gateway odmítne chybějící/neplatné hodnoty a zapíše `vehicle_id` i `valid_until` bez prázdného fallbacku. Typecheck, lint, 47 testů, syntaxe gatewaye, kontrola odeslání prázdného formuláře a produkční build prošly.

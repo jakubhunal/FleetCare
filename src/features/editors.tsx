@@ -351,18 +351,40 @@ function Entitlements({
         <div className="repeat-row" key={i}>
           <Field>
             Název
-            <input
-              aria-label={`${title} název ${i + 1}`}
-              value={item.name}
-              onChange={(e) =>
-                onChange(
-                  value.map((x, n) =>
-                    n === i ? { ...x, name: e.target.value } : x,
-                  ),
-                )
-              }
-              required
-            />
+            {title === "Oprávnění" ? (
+              <select
+                aria-label={`${title} název ${i + 1}`}
+                value={item.name}
+                onChange={(e) =>
+                  onChange(
+                    value.map((x, n) =>
+                      n === i ? { ...x, name: e.target.value } : x,
+                    ),
+                  )
+                }
+                required
+              >
+                <option value="">Vyberte skupinu</option>
+                {(["B", "BE", "C", "CE"] as const).map((licence) => (
+                  <option key={licence} value={licence}>
+                    {licence}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                aria-label={`${title} název ${i + 1}`}
+                value={item.name}
+                onChange={(e) =>
+                  onChange(
+                    value.map((x, n) =>
+                      n === i ? { ...x, name: e.target.value } : x,
+                    ),
+                  )
+                }
+                required
+              />
+            )}
           </Field>
           <Field>
             Platnost do

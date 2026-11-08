@@ -181,6 +181,18 @@ export function applyCommand(
             : "K ověření"
           : (original?.state ?? t.state);
       Object.assign(parsed, t);
+      if (
+        t.endAt &&
+        t.endKm !== null &&
+        ((original?.state === "Probíhá" && !original.endAt) ||
+          (original?.state === "Ukončena neúplná" &&
+            original.endKm === null)) &&
+        t.orderId
+      ) {
+        const order = s.orders.find((item) => item.id === t.orderId);
+        if (order && ["Přiřazená", "Probíhá"].includes(order.state))
+          Object.assign(order, touch(order), { state: "Dokončená" });
+      }
       readKm(s, t.vehicleId, t.endKm, t.endAt || t.startAt, t.id + "-end");
     }
     if (c.collection === "fuels") {
@@ -532,6 +544,11 @@ export function applyCommand(
       );
     validateTrip(s, t);
     s.trips.push(t);
+    if (t.orderId) {
+      const order = s.orders.find((item) => item.id === t.orderId);
+      if (order && order.state === "Přiřazená")
+        Object.assign(order, touch(order), { state: "Probíhá" });
+    }
     readKm(s, t.vehicleId, t.startKm, t.startAt, t.id + "-start");
   } else if (c.type === "trip.transition") {
     manager(actor);
