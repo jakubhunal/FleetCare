@@ -724,6 +724,7 @@ export function DataTable<T extends { id: string }>({
   emptyText = "Žádný odpovídající záznam",
   prefix = "",
   toolbarActions,
+  defaultDesc = false,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -733,6 +734,8 @@ export function DataTable<T extends { id: string }>({
   emptyText?: string;
   prefix?: string;
   toolbarActions?: ReactNode;
+  /** Sort descending until the user picks an order in a column header. */
+  defaultDesc?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -745,7 +748,7 @@ export function DataTable<T extends { id: string }>({
     tableQueries: { ...location.state?.tableQueries, [prefix]: q },
   };
   const sort = params.get(prefix + "sort") || columns[0].key,
-    desc = params.get(prefix + "desc") === "1";
+    desc = (params.get(prefix + "desc") ?? (defaultDesc ? "1" : "0")) === "1";
   const page = Math.max(1, Number(params.get(prefix + "page")) || 1);
   const change = (key: string, value: string) => {
     const next = new URLSearchParams(params);

@@ -600,7 +600,19 @@ export function FuelTable({
       prefix="fuels."
       rows={rows}
       path={(f) => `/fuels/${f.id}`}
-      search={(f) => f.station + " " + f.at + " " + f.fuel}
+      // Newest first: a fill-up entered from a receipt carries the receipt's
+      // date, so with the oldest first it would end up mid-list.
+      defaultDesc
+      search={(f) =>
+        [
+          f.station,
+          f.fuel,
+          f.at,
+          date(f.at, true),
+          s.vehicles.find((v) => v.id === f.vehicleId)?.spz,
+          s.drivers.find((d) => d.id === f.driverId)?.name,
+        ].join(" ")
+      }
       filters={[
         {
           key: "state",
