@@ -319,7 +319,7 @@ Záložky: **Tankování / CCS výpisy / Ostatní výdaje / Přehled nákladů**
 - Eviduj výpis, období, zdroj e-mail / upload, datum přijetí, úplnost a stav zpracování. Datum přijetí a datum transakce jsou odlišná pole.
 - Detail výpisu obsahuje transakce a originální soubor. Detail tankování / CCS transakce ukazuje vedle sebe záznam řidiče, CCS údaje, rozdíl, originální účtenku a výpis.
 - Rozdíly smí řešit jen fleet manažer a vedení v jeho manažerském rozsahu. Řidič nedostane toto tlačítko ani příslušný příkaz přes FE datovou vrstvu.
-- Zachovej stavy Čeká na výpis, Spárováno, Rozdíl, Více kandidátů, Chybí záznam řidiče, Neúplný podklad a Vyřešeno. Technickou chybu importu odliš od finančního rozdílu.
+- Zachovej stavy Čeká na výpis, Spárováno, Rozdíl, Chybí záznam řidiče, Neúplný podklad a Vyřešeno. Technickou chybu importu odliš od finančního rozdílu.
 - Nejasnou shodu automaticky nepřiděluj. Umožni manažerovi vybrat transakci, opravit údaj s důvodem nebo ponechat případ otevřený. Výsledek a zdrojové vazby musí přežít obnovení stránky.
 - **Účtenka a odpovídající CCS transakce jsou dva podklady jednoho nákladu.** Zajisti jediný kanonický náklad a vazby na oba doklady; nesečti je dvakrát. Stejný princip platí pro opakované nahrání PDF i pozdě doručený výpis.
 - Dokumentuj, která částka vstupuje do reportu. Nevyřešený rozdíl označ jako předběžný nebo jej odděl od doloženého součtu. Výběr pravidla nesmí zůstat skrytý uvnitř komponenty.

@@ -1,3 +1,4 @@
+import { deadlineTitle } from "../lib/deadline-titles";
 import type { Actor, Driver, Order, Trip, Vehicle, Workspace } from "./models";
 import { normalize, today } from "../lib/format";
 export class DomainError extends Error {
@@ -326,10 +327,10 @@ export function deadlines(s: Workspace, now = new Date()) {
       continue;
     result.push({
       id: "doc-" + doc.id,
-      title:
-        doc.type +
-        " · " +
-        (s.vehicles.find((v) => v.id === doc.vehicleId)?.spz || doc.name),
+      title: deadlineTitle(
+        doc.type as "STK" | "Pojištění",
+        s.vehicles.find((v) => v.id === doc.vehicleId)?.spz || doc.name,
+      ),
       date: term,
       km: null,
       state: term < today() ? "Vyžaduje řešení" : "Plánováno",
@@ -342,7 +343,7 @@ export function deadlines(s: Workspace, now = new Date()) {
     if (v.stkUntil)
       result.push({
         id: "stk-" + v.id,
-        title: "STK · " + v.spz,
+        title: deadlineTitle("STK", v.spz),
         date: v.stkUntil,
         km: null,
         state: v.stkUntil < today() ? "Vyžaduje řešení" : "Plánováno",
@@ -351,27 +352,34 @@ export function deadlines(s: Workspace, now = new Date()) {
         derived: true,
       });
   for (const d of s.drivers)
-    for (const l of [...d.licences, ...d.qualifications])
-      if (l.validUntil)
-        result.push({
-          id: d.id + l.name,
-          title: l.name + " · " + d.name,
-          date: l.validUntil,
-          km: null,
-          state: l.validUntil < today() ? "Vyžaduje řešení" : "Plánováno",
-          owner: d.name,
-          path: `/drivers/${d.id}/overview`,
-          derived: true,
-        });
+    for (const [type, entries] of [
+      ["Oprávnění", d.licences],
+      ["Kvalifikace", d.qualifications],
+    ] as const)
+      for (const l of entries)
+        if (l.validUntil)
+          result.push({
+            id: d.id + l.name,
+            title: deadlineTitle(type, d.name, l.name),
+            date: l.validUntil,
+            km: null,
+            state: l.validUntil < today() ? "Vyžaduje řešení" : "Plánováno",
+            owner: d.name,
+            path: `/drivers/${d.id}/overview`,
+            derived: true,
+          });
   for (const plan of s.plans)
     for (const item of plan.items)
       if (item.nextDate || item.nextKm !== null)
         result.push({
           id: item.id,
-          title:
-            item.name +
-            " · " +
-            s.vehicles.find((v) => v.id === plan.vehicleId)?.spz,
+          title: s.vehicles.find((v) => v.id === plan.vehicleId)?.spz
+            ? deadlineTitle(
+                "Servis",
+                s.vehicles.find((v) => v.id === plan.vehicleId)!.spz,
+                item.name,
+              )
+            : item.name,
           date: item.nextDate,
           km: item.nextKm,
           state:

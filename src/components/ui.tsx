@@ -1,3 +1,4 @@
+import { documentTarget } from "../lib/navigation";
 import {
   Children,
   Fragment,
@@ -83,53 +84,6 @@ export function Notice({
     >
       {children}
     </div>
-  );
-}
-const tones: Record<string, string> = {
-  "V provozu": "green",
-  Aktivní: "green",
-  Potvrzena: "green",
-  Uzavřena: "gray",
-  Uzavřená: "gray",
-  Spárováno: "green",
-  Vyřešeno: "green",
-  Vyřešena: "green",
-  Dokončená: "green",
-  Splněno: "green",
-  Vhodné: "green",
-  Nevhodné: "red",
-  Pozastavený: "red",
-  Odstaveno: "red",
-  Rozdíl: "red",
-  "Vyžaduje řešení": "red",
-  failed: "red",
-  upload_failed: "red",
-  Probíhá: "blue",
-  "V servisu": "blue",
-  "Řeší se": "blue",
-  Přiřazená: "blue",
-  processing: "blue",
-};
-const labels: Record<string, string> = {
-  not_configured: "Služba není připojena",
-  not_required: "Bez extrakce",
-  stored: "Soubor uložen",
-  uploading: "Ukládání",
-  upload_failed: "Uložení selhalo",
-  queued: "Čeká na zpracování",
-  processing: "Zpracovává se",
-  completed: "Zpracováno",
-  incomplete: "Chybí údaje",
-  failed: "Zpracování selhalo",
-  sending: "Odesílá se",
-  sent: "Odesláno",
-  skipped_no_recipient: "Vynecháno — bez řidiče",
-};
-export function Badge({ value }: { value: string }) {
-  return (
-    <span className={"badge " + (tones[value] || "amber")}>
-      {labels[value] || value}
-    </span>
   );
 }
 export function PageHead({
@@ -230,16 +184,8 @@ export function Back({
   children: ReactNode;
   returnState?: unknown;
 }) {
-  const location = useLocation();
-  const candidate: unknown = location.state?.returnTo;
-  const target =
-    typeof candidate === "string" &&
-    candidate.startsWith("/") &&
-    !candidate.startsWith("//")
-      ? candidate
-      : to;
   return (
-    <Link className="back" to={target} state={returnState ?? location.state}>
+    <Link className="back" to={to} state={returnState}>
       <ArrowLeft size={16} />
       {children}
     </Link>
@@ -922,7 +868,13 @@ export function DataTable<T extends { id: string }>({
                     )
                   )
                     return;
-                  navigate(path(row), { state: returnState });
+                  navigate(
+                    documentTarget(
+                      path(row),
+                      location.pathname + location.search,
+                    ),
+                    { state: returnState },
+                  );
                 }}
               >
                 {columns.map((c, i) => (
@@ -930,7 +882,10 @@ export function DataTable<T extends { id: string }>({
                     {i === 0 && path ? (
                       <Link
                         className="row-link"
-                        to={path(row)}
+                        to={documentTarget(
+                          path(row),
+                          location.pathname + location.search,
+                        )}
                         state={returnState}
                       >
                         {c.render(row)}

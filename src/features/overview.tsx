@@ -1,3 +1,5 @@
+import { transactionState } from "../domain/ccs";
+import { StatusChip } from "../components/status-chip";
 import { useHistory } from "../lib/history";
 import { DeadlineDateDialog, deadlineEdit } from "./deadline-editor";
 import { useState } from "react";
@@ -18,7 +20,6 @@ import { useFleet } from "../app/context";
 import {
   Back,
   ChoiceButton,
-  Badge,
   DataGrid,
   HistorySwitch,
   ViewToggle,
@@ -79,13 +80,15 @@ export function Dashboard() {
         path: `/trips/${t.id}`,
       })),
     ...s.transactions
-      .filter((t) => !["Spárováno", "Vyřešeno"].includes(t.state))
+      .filter(
+        (t) => !["Spárováno", "Vyřešeno"].includes(transactionState(s, t)),
+      )
       .map((t) => ({
         id: t.id,
         title: "Vyřešit CCS podklady",
         meta: t.externalId,
         term: t.at,
-        state: t.state,
+        state: transactionState(s, t),
         owner: "Fleet manažer",
         path: `/transactions/${t.id}`,
       })),
@@ -206,7 +209,7 @@ export function Dashboard() {
                 {
                   key: "state",
                   label: "Stav",
-                  render: (x) => <Badge value={x.state} />,
+                  render: (x) => <StatusChip value={x.state} />,
                 },
               ]}
             />
@@ -376,7 +379,7 @@ export function DeadlinesPage() {
                           {all
                             .filter((x) => x.date === iso)
                             .map((x) => (
-                              <Link to={x.path} key={x.id}>
+                              <Link to={x.path} key={x.id} title={x.title}>
                                 {x.title}
                               </Link>
                             ))}
@@ -436,7 +439,7 @@ export function DeadlinesPage() {
                 key: "state",
                 label: "Stav",
                 sort: (d) => d.state,
-                render: (d) => <Badge value={d.state} />,
+                render: (d) => <StatusChip entity="deadline" value={d.state} />,
               },
             ]}
           />
@@ -689,7 +692,7 @@ export function DeadlinePage() {
             ["Km hranice", number(d.km, "km")],
             ["Vozidlo", vehicleId ? <VRef id={vehicleId} /> : null],
             ["Odpovědný", driverId ? <DRef id={driverId} /> : d.owner],
-            ["Stav", <Badge value={d.state} />],
+            ["Stav", <StatusChip entity="deadline" value={d.state} />],
           ]}
         />
         {d.derived && (

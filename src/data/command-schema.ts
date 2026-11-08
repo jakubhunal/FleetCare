@@ -81,6 +81,7 @@ const commandUnion = z.discriminatedUnion("type", [
     place: z.string(),
     message: z.string().min(1),
   }),
+  z.object({ type: z.literal("trip.notify"), id: z.string(), email: z.email(), message: z.string().trim().min(1) }),
   z.object({ type: z.literal("notification.retry"), id: z.string() }),
   z.object({
     type: z.literal("notification.recipient"),

@@ -1,3 +1,5 @@
+import { ccsStatus } from "../lib/status";
+import { DomainError } from "./rules";
 import { dateKey } from "../lib/format";
 import type { Workspace } from "./models";
 type Fuel = Workspace["fuels"][number];
@@ -17,7 +19,23 @@ export function fuelDifferences(s: Workspace, f: Fuel) {
 }
 /** One current CCS state for list and detail: the saved state unless an open difference exists. */
 export function fuelState(s: Workspace, f: Fuel): Fuel["state"] {
-  return fuelDifferences(s, f).length ? "Rozdíl" : f.state;
+  if (fuelDifferences(s, f).length) return "Rozdíl";
+  // A saved difference alone is not evidence of a mismatching linked transaction.
+  if (f.state === "Rozdíl")
+    return s.transactions.some((t) => t.fuelId === f.id)
+      ? "Spárováno"
+      : "Čeká na výpis";
+  return ccsStatus(f.state);
+}
+/** Transaction views obey the same evidence rule as their linked fuel record. */
+export function transactionState(
+  s: Workspace,
+  t: Workspace["transactions"][number],
+) {
+  const f = s.fuels.find((f) => f.id === t.fuelId);
+  if (f && fuelDifferences(s, f).some((x) => x.id === t.id)) return "Rozdíl";
+  if (t.state === "Rozdíl") return f ? "Spárováno" : "Čeká na výpis";
+  return ccsStatus(t.state);
 }
 /** Conservative matching: known card, exact time and litres; no fuzzy identity guess. */
 export function reconcileCCS(s: Workspace, statementId: string) {
@@ -58,7 +76,7 @@ export function reconcileCCS(s: Workspace, statementId: string) {
         ),
     );
     if (candidates.length > 1) {
-      setState("Více kandidátů");
+      setState("Neúplný podklad");
       continue;
     }
     if (!candidates.length) {
@@ -80,4 +98,13 @@ export function reconcileCCS(s: Workspace, statementId: string) {
     f.version++;
     t.updatedAt = f.updatedAt = new Date().toISOString();
   }
+}
+
+/** Manual edits cannot invent a financial difference without linked evidence. */
+export function validateFuelCCSState(s: Workspace, f: Fuel) {
+  if (f.state === "Rozdíl" && !fuelDifferences(s, f).length)
+    throw new DomainError(
+      "Stav Rozdíl lze zvolit jen u spárovaného tankování s nevyřešeným rozdílem.",
+      "state",
+    );
 }

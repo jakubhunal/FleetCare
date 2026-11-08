@@ -1,3 +1,4 @@
+import { StatusChip } from "../components/status-chip";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useParams } from "react-router";
@@ -188,7 +189,12 @@ export function SettingsPage() {
                 {
                   key: "state",
                   label: "Stav",
-                  render: (c) => (c.active ? "Aktivní" : "Neaktivní"),
+                  render: (c) => (
+                    <StatusChip
+                      entity="card"
+                      value={c.active ? "Aktivní" : "Neaktivní"}
+                    />
+                  ),
                 },
                 {
                   key: "tolerance",

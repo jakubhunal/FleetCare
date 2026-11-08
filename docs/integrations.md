@@ -21,7 +21,7 @@ Runtime schéma integračních událostí je v `src/integrations/contracts.ts`, 
 
 Stavy komunikace: not_configured → queued → sending → sent / failed, případně skipped_no_recipient. `sent` znamená potvrzení poskytovatele, nikoli prokázané doručení do schránky. Chybějící manažerský nebo servisní kontakt nesmí zahodit závadu; po doplnění lze požadavek obnovit. Pozdější změna svěření nesmí změnit adresáta již připravené zprávy řidiči.
 
-CCS lokálně používá konzervativní shodu: známá karta a její historická vazba, stejné vozidlo/měna, shodný skutečný čas a doložené litry. Tolerance částky musí být explicitně nastavena. Hranice je včetně. Více kandidátů se nikdy automaticky nespojí. Fuzzy časová tolerance není potvrzená firemní politika; případné rozšíření musí mít vlastní schválené pravidlo a testy.
+CCS lokálně používá konzervativní shodu: známá karta a její historická vazba, stejné vozidlo/měna, shodný skutečný čas a doložené litry. Tolerance částky musí být explicitně nastavena. Hranice je včetně. Nejednoznačná shoda se nikdy automaticky nespojí a používá stav Neúplný podklad. Fuzzy časová tolerance není potvrzená firemní politika; případné rozšíření musí mít vlastní schválené pravidlo a testy.
 
 ## Free tarify a rozpočtový model
 

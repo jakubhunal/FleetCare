@@ -1,3 +1,5 @@
+import { StatusChip } from "../components/status-chip";
+import { assignmentState } from "../lib/status";
 import { useHistory } from "../lib/history";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -14,7 +16,6 @@ import {
 import { useFleet, Confirm } from "../app/context";
 import {
   Back,
-  Badge,
   Button,
   DataGrid,
   DataTable,
@@ -155,7 +156,7 @@ export function VehiclePage() {
             {v.category} · {v.year || "Rok není doložen"} ·{" "}
             {v.purpose || "Účel není uveden"}
           </p>
-          <Badge value={v.state} />{" "}
+          <StatusChip entity="vehicle" value={v.state} />{" "}
           {v.reserve && <span className="badge gray">Provozní rezerva</span>}
         </div>
         <div className="hero-aside">
@@ -169,6 +170,7 @@ export function VehiclePage() {
           {tab === "overview" && (
             <DataGrid
               items={[
+                ["Stav", <StatusChip entity="vehicle" value={v.state} />],
                 ["SPZ", v.spz],
                 ["VIN", v.vin || null],
                 ["Kategorie", v.category],
@@ -332,6 +334,7 @@ function AssignmentDialog({
 }) {
   const { s, run, close } = useFleet();
   const v = s.vehicles.find((vehicle) => vehicle.id === vehicleId)!;
+  const current = activeAssignment(s, vehicleId);
   const [dirty, setDirty] = useState(false);
   return (
     <Dialog
@@ -340,6 +343,19 @@ function AssignmentDialog({
       dirty={dirty}
     >
       <div className="dialog-body">
+        {current && (
+          <DataGrid
+            items={[
+              [
+                "Stav",
+                <StatusChip
+                  entity="assignment"
+                  value={assignmentState(current)}
+                />,
+              ],
+            ]}
+          />
+        )}
         <Form
           danger={end}
           onDirty={setDirty}
@@ -457,15 +473,7 @@ function Assignments({
           key: "state",
           label: "Stav",
           render: (a) => (
-            <Badge
-              value={
-                a.to && a.to <= now
-                  ? "Ukončeno"
-                  : a.from > now
-                    ? "Plánováno"
-                    : "Aktivní"
-              }
-            />
+            <StatusChip entity="assignment" value={assignmentState(a, now)} />
           ),
         },
         {
@@ -619,7 +627,7 @@ export function DriverPage() {
             {d.email || "E-mail není uveden"} ·{" "}
             {d.phone || "Telefon není uveden"}
           </p>
-          <Badge value={driverState(d)} />
+          <StatusChip entity="driver" value={driverState(d)} />
         </div>
       </div>
       <section className="panel">
@@ -640,7 +648,10 @@ export function DriverPage() {
                 items={[
                   ["Pracovní e-mail", d.email || null],
                   ["Pracovní telefon", d.phone || null],
-                  ["Stav profilu", driverState(d)],
+                  [
+                    "Stav",
+                    <StatusChip entity="driver" value={driverState(d)} />,
+                  ],
                   [
                     "Zdravotní způsobilost",
                     `${d.medicalState} · do ${date(d.medicalUntil)}`,

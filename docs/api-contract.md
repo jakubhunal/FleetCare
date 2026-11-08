@@ -51,3 +51,7 @@ OCR neběží uvnitř dlouhého formulářového requestu. Dokončení uploadu v
 ## Automaticky ověřeno
 
 Izolovaný Node HTTP server v `tests/http.test.ts` ověřuje read, identity, search, commands/idempotency header, upload/content/complete, jobs, content, chybná DTO, 409, 429, síťovou chybu a omezení řidiče. Není to připojená ostrá DB. V prostředí Codex může test lokálního síťového spojení vyžadovat síťové oprávnění sandboxu.
+
+### Připomenutí údajů jízdy
+
+Příkaz `trip.notify` (`id`, `email`, `message`) je určen správě (Fleet manažer/Vedení). Je povolen jen u neukončené/neúplné jízdy nebo nesrovnalosti tachometru. Vytváří stejný záznam `notifications` jako `fault.notify`: příjemcem je řidič jízdy, `aggregateId` je ID jízdy, `serviceAt` je null. Stávající Make e-mailová brána doručí požadavek, pokud je nastavená. Lokální režim zachová `not_configured`; nejde o důkaz odeslání. Bez nových polí a nového kanálu; externí implementace API musí tento nový příkaz podporovat.

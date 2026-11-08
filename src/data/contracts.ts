@@ -71,6 +71,7 @@ export type Command =
       place: string;
       message: string;
     }
+  | { type: "trip.notify"; id: string; email: string; message: string }
   | { type: "notification.retry"; id: string }
   | {
       type: "notification.recipient";

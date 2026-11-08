@@ -18,6 +18,7 @@ import {
 } from "./rules";
 import { normalize } from "../lib/format";
 import type { Command } from "../data/contracts";
+import { tripNotificationReason } from "./trip-notification";
 import { reconcileCCS } from "./ccs";
 const ensure = (condition: unknown, message: string, field?: string) => {
   if (!condition) throw new DomainError(message, field);
@@ -614,6 +615,34 @@ export function applyCommand(
       message: c.message,
       serviceAt: c.serviceAt,
       place: c.place,
+      state: "not_configured",
+      reason: "E-mailová služba není připojena.",
+    });
+  } else if (c.type === "trip.notify") {
+    manager(actor);
+    const trip = find(s, "trips", c.id);
+    ensure(
+      tripNotificationReason(trip),
+      "U řádně ukončené jízdy není notifikace potřeba.",
+    );
+    const driver = s.drivers.find((d) => d.id === trip.driverId);
+    ensure(driver, "Řidič jízdy není dostupný.");
+    ensure(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email),
+      "Doplňte platného příjemce.",
+      "email",
+    );
+    ensure(c.message.trim(), "Vyplňte zprávu.", "message");
+    s.notifications.push({
+      ...meta(),
+      aggregateId: trip.id,
+      recipientRole: "driver",
+      recipientId: trip.driverId,
+      email: c.email,
+      subject: "Doplnění údajů jízdy",
+      message: c.message,
+      serviceAt: null,
+      place: "",
       state: "not_configured",
       reason: "E-mailová služba není připojena.",
     });

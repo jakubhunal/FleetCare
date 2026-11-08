@@ -1316,6 +1316,9 @@ dialog::backdrop {
   box-shadow: inset 0 0 0 2px #739a66;
 }
 .calendar a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   display: block;
   font-size: var(--font-small);
   line-height: 1.5;
@@ -2097,3 +2100,9 @@ dialog .report-filters {
 .deadline-controls {
   min-height: 86px;
 }
+
+.autocomplete { position: relative; font-size: max(14px, var(--font-small)); }
+.autocomplete input { width: 100%; font-size: inherit; }
+.autocomplete ul { list-style: none; margin: 4px 0 0; padding: 4px; max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.autocomplete li { padding: 10px; cursor: pointer; }
+.autocomplete li.active { background: #edf3dd; }

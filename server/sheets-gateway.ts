@@ -122,6 +122,7 @@ const escapeHtml = (v: string) =>
   v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const mailCommands = new Set([
   "fault.notify",
+  "trip.notify",
   "notification.retry",
   "notification.recipient",
 ]);
@@ -152,7 +153,10 @@ async function deliverNotifications(
     const to =
       /@example\.test$/i.test(n.email) && override ? override : n.email;
     const fault = after.faults.find((f) => f.id === n.aggregateId);
-    const vehicle = after.vehicles.find((v) => v.id === fault?.vehicleId);
+    const trip = after.trips.find((t) => t.id === n.aggregateId);
+    const vehicle = after.vehicles.find(
+      (v) => v.id === (fault?.vehicleId || trip?.vehicleId),
+    );
     const lines = [
       "Dobrý den,",
       "",

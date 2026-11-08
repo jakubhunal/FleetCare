@@ -1,3 +1,6 @@
+import { StatusChip } from "../components/status-chip";
+import { fuelState, validateFuelCCSState } from "../domain/ccs";
+import { ccsOptions } from "../lib/status";
 import {
   individualPlanSave,
   planFormErrors,
@@ -21,6 +24,7 @@ import { useFleet } from "../app/context";
 import {
   Button,
   Dialog,
+  DataGrid,
   Field,
   FilePicker,
   Form,
@@ -240,7 +244,10 @@ export function editorFields(
           options: options(["Ano", "Ne", "Není doloženo"]),
         }),
         ...(existing && actor.role !== "Řidič"
-          ? [f("correctionReason", "Důvod opravy", "textarea", true)]
+          ? [
+              f("state", "CCS stav", "select", true, { options: ccsOptions }),
+              f("correctionReason", "Důvod opravy", "textarea", true),
+            ]
           : []),
       ];
     case "expenses":
@@ -905,6 +912,8 @@ export function EntityEditor({
   const [key] = useState(() => crypto.randomUUID());
   const data: Record<string, unknown> = { ...record, ...defaults };
   const driverMode = actor.role === "Řidič";
+  if (collection === "fuels" && record && !driverMode)
+    data.state = fuelState(s, record as Records["fuels"]);
   const trip =
     collection === "trips" && record ? (record as Records["trips"]) : null;
   const incomplete = trip && tripStatus(trip) === "Ukončena neúplná";
@@ -1007,6 +1016,23 @@ export function EntityEditor({
       <div className="dialog-body">
         {confirmation}
         {notice && <Notice>{notice}</Notice>}
+        {collection === "cards" && record && (
+          <DataGrid
+            items={[
+              [
+                "Stav",
+                <StatusChip
+                  entity="card"
+                  value={
+                    (record as Records["cards"]).active
+                      ? "Aktivní"
+                      : "Neaktivní"
+                  }
+                />,
+              ],
+            ]}
+          />
+        )}
         <Form
           fields={fields}
           validate={
@@ -1045,6 +1071,11 @@ export function EntityEditor({
                   ? toPragueTimestamp(String(values[field.key]))
                   : null;
             }
+            if (collection === "fuels" && record && !driverMode)
+              validateFuelCCSState(s, {
+                ...record,
+                ...values,
+              } as Records["fuels"]);
             for (const field of [
               "equipment",
               ...(collection === "orders" ? ["qualifications"] : []),

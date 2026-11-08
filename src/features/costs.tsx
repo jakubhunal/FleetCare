@@ -1,12 +1,13 @@
+import { StatusChip } from "../components/status-chip";
+import { ccsOptions } from "../lib/status";
 import { DocumentLink } from "./documents";
-import { fuelDifferences, fuelState } from "../domain/ccs";
+import { fuelDifferences, fuelState, transactionState } from "../domain/ccs";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { Plus, Upload, FileText, Pencil } from "lucide-react";
 import { useFleet } from "../app/context";
 import {
   Back,
-  Badge,
   Button,
   ChoiceButton,
   DataGrid,
@@ -119,7 +120,7 @@ export function CostsPage() {
                     sort: (x) => x.processing,
                     render: (x) => (
                       <>
-                        <Badge value={x.processing} />
+                        <StatusChip entity="statement" value={x.processing} />
                         <small>
                           {x.complete ? "Úplný" : "Neúplný / nezpracovaný"}
                         </small>
@@ -202,15 +203,13 @@ export function FuelPage() {
         title="Detail tankování"
         subtitle={date(f.at, true)}
         actions={
-          <Button onClick={() => edit("fuels", f)}>
-            Doplnit / opravit záznam
-          </Button>
+          <Button onClick={() => edit("fuels", f)}>Upravit údaje</Button>
         }
       />
       <Panel title="Záznam řidiče">
         <DataGrid
           items={[
-            ["Stav", <Badge value={fuelState(s, f)} />],
+            ["Stav", <StatusChip entity="ccs" value={fuelState(s, f)} />],
             ["Vozidlo", <VRef id={f.vehicleId} />],
             ["Řidič", <DRef id={f.driverId} />],
             ["Datum transakce", date(f.at, true)],
@@ -248,7 +247,7 @@ export function FuelPage() {
                     ["Výsledek", t.resolution || null],
                   ]}
                 />
-                <Badge value={t.state} />{" "}
+                <StatusChip entity="ccs" value={transactionState(s, t)} />{" "}
                 <Link to={`/transactions/${t.id}`}>Detail transakce →</Link>
               </div>
             ))
@@ -284,19 +283,7 @@ export function FuelPage() {
         </Panel>
       )}
       <Panel title="Dokumenty">
-        <DocumentList
-          ownerType="fuel"
-          ownerId={f.id}
-          vehicleId={f.vehicleId}
-          relatedOwners={
-            actor.role !== "Řidič"
-              ? transactions.map((t) => ({
-                  ownerType: "statement" as const,
-                  ownerId: t.statementId,
-                }))
-              : []
-          }
-        />
+        <DocumentList ownerType="fuel" ownerId={f.id} vehicleId={f.vehicleId} />
       </Panel>
     </>
   );
@@ -329,6 +316,14 @@ export function StatementPage() {
             </DocumentLink>
           ))}
       />
+      <Panel title="Údaje výpisu">
+        <DataGrid
+          items={[
+            ["Stav", <StatusChip entity="statement" value={x.processing} />],
+            ["Úplnost", x.complete ? "Úplný" : "Neúplný / nezpracovaný"],
+          ]}
+        />
+      </Panel>
       <Panel title="Transakce výpisu">
         <TransactionTable statementId={x.id} />
       </Panel>
@@ -341,21 +336,13 @@ function TransactionTable({ statementId }: { statementId: string }) {
     <DataTable
       rows={s.transactions.filter((t) => t.statementId === statementId)}
       path={(t) => `/transactions/${t.id}`}
-      search={(t) => t.externalId + " " + t.state}
+      search={(t) => t.externalId + " " + transactionState(s, t)}
       filters={[
         {
           key: "state",
           label: "Všechny stavy",
-          options: [
-            "Čeká na výpis",
-            "Spárováno",
-            "Rozdíl",
-            "Více kandidátů",
-            "Chybí záznam řidiče",
-            "Neúplný podklad",
-            "Vyřešeno",
-          ].map((x) => [x, x]),
-          value: (t) => t.state,
+          options: ccsOptions,
+          value: (t) => transactionState(s, t),
         },
       ]}
       columns={[
@@ -380,8 +367,10 @@ function TransactionTable({ statementId }: { statementId: string }) {
         {
           key: "state",
           label: "Párování",
-          sort: (t) => t.state,
-          render: (t) => <Badge value={t.state} />,
+          sort: (t) => transactionState(s, t),
+          render: (t) => (
+            <StatusChip entity="ccs" value={transactionState(s, t)} />
+          ),
         },
       ]}
     />
@@ -389,7 +378,7 @@ function TransactionTable({ statementId }: { statementId: string }) {
 }
 export function TransactionPage() {
   const { id } = useParams();
-  const { s, show } = useFleet();
+  const { s, actor, show } = useFleet();
   const t = s.transactions.find((t) => t.id === id);
   if (!t) return <Empty title="Transakce není dostupná" />;
   const f = s.fuels.find((f) => f.id === t.fuelId);
@@ -400,28 +389,33 @@ export function TransactionPage() {
         title={t.externalId}
         subtitle="Porovnání podkladů jednoho nákladu"
         actions={
-          <Button
-            primary
-            onClick={() =>
-              show(
-                <ResolveDialog
-                  transactionId={t.id}
-                  initialFuelId={t.fuelId || undefined}
-                />,
-              )
-            }
-          >
-            Vyřešit CCS rozdíl
-          </Button>
+          actor.role !== "Řidič" &&
+          f &&
+          fuelDifferences(s, f).some((x) => x.id === t.id) && (
+            <Button
+              primary
+              onClick={() =>
+                show(
+                  <ResolveDialog
+                    transactionId={t.id}
+                    initialFuelId={t.fuelId || undefined}
+                  />,
+                )
+              }
+            >
+              Vyřešit CCS rozdíl
+            </Button>
+          )
         }
       />
       <div className="two-columns">
         <Panel title="CCS transakce">
-          <p>
-            <Badge value={t.state} />
-          </p>
           <DataGrid
             items={[
+              [
+                "Stav",
+                <StatusChip entity="ccs" value={transactionState(s, t)} />,
+              ],
               ["Částka vč. DPH", money(t.amountMinor, t.currency)],
               ["Datum transakce", date(t.at, true)],
               ["Litry", number(t.litres, "l")],

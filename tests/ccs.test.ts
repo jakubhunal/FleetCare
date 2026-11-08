@@ -51,11 +51,11 @@ it("tolerance karty je včetně hranice a jediný náklad bere částku CCS", ()
     { amountMinor: 10099, provisional: false },
   ]);
 });
-it("více kandidátů není automaticky spojeno a není dvojí předběžný náklad", () => {
+it("nejednoznačná shoda není automaticky spojena a není dvojí předběžný náklad", () => {
   const s = ccsFixture();
   s.fuels.push({ ...s.fuels[0], id: "another" });
   reconcileCCS(s, "st");
-  expect(s.transactions[0].state).toBe("Více kandidátů");
+  expect(s.transactions[0].state).toBe("Neúplný podklad");
   expect(s.transactions[0].fuelId).toBeNull();
   expect(canonicalCosts(s)).toHaveLength(1);
 });

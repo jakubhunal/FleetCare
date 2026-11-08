@@ -1,7 +1,9 @@
+import { StatusChip } from "../components/status-chip";
+import { ccsOptions } from "../lib/status";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useFleet } from "../app/context";
-import { Badge, DataTable } from "../components/ui";
+import { DataTable } from "../components/ui";
 import { activeAssignment, driverState, odometer } from "../domain/rules";
 import type {
   Records,
@@ -140,7 +142,7 @@ export function VehicleTable({
           key: "state",
           label: "Stav",
           sort: (v) => v.state,
-          render: (v) => <Badge value={v.state} />,
+          render: (v) => <StatusChip entity="vehicle" value={v.state} />,
         },
         {
           key: "due",
@@ -203,7 +205,7 @@ export function DriverTable({
           key: "state",
           label: "Stav profilu",
           sort: driverState,
-          render: (d) => <Badge value={driverState(d)} />,
+          render: (d) => <StatusChip entity="driver" value={driverState(d)} />,
         },
         {
           key: "licence",
@@ -340,7 +342,7 @@ export function OrderTable({ rows }: { rows: Order[] }) {
           sort: (o) => o.state,
           render: (o) => (
             <>
-              <Badge value={o.state} />
+              <StatusChip entity="order" value={o.state} />
             </>
           ),
         },
@@ -488,7 +490,7 @@ export function TripsTable({
           sort: tripStatus,
           render: (t) => (
             <>
-              <Badge value={tripStatus(t)} />
+              <StatusChip entity="trip" value={tripStatus(t)} />
               <small>{t.source === "manual" ? "Ruční záznam" : t.source}</small>
             </>
           ),
@@ -578,7 +580,7 @@ export function FaultTable({
           key: "state",
           label: "Stav",
           sort: (f) => f.state,
-          render: (f) => <Badge value={f.state} />,
+          render: (f) => <StatusChip entity="fault" value={f.state} />,
         },
       ]}
     />
@@ -603,15 +605,7 @@ export function FuelTable({
         {
           key: "state",
           label: "Všechny stavy",
-          options: optionPairs([
-            "Čeká na výpis",
-            "Spárováno",
-            "Rozdíl",
-            "Více kandidátů",
-            "Chybí záznam řidiče",
-            "Neúplný podklad",
-            "Vyřešeno",
-          ]),
+          options: ccsOptions,
           value: (f) => fuelState(s, f),
         },
       ]}
@@ -671,7 +665,7 @@ export function FuelTable({
           key: "state",
           label: "CCS stav",
           sort: (f) => fuelState(s, f),
-          render: (f) => <Badge value={fuelState(s, f)} />,
+          render: (f) => <StatusChip entity="ccs" value={fuelState(s, f)} />,
         },
       ]}
     />
@@ -746,7 +740,12 @@ export function DriverOperationsTable({ driverId }: { driverId: string }) {
           key: "state",
           label: "Stav",
           sort: (r) => r.state,
-          render: (r) => <Badge value={r.state} />,
+          render: (r) => (
+            <StatusChip
+              entity={r.type === "Jízda" ? "trip" : "order"}
+              value={r.state}
+            />
+          ),
         },
       ]}
     />

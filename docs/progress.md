@@ -218,3 +218,25 @@ Společný Confirm byl zobecněn do ActionConfirmation; DeleteConfirmation/useCo
 Dávka 6 — dokončení: uložené úkony plánu/šablony, oprávnění/kvalifikace a vazby CCS karet používají stejný useConfirmDelete. Nové pracovní řádky, vybrané soubory před uploadem a dny upozornění jsou záměrně bez potvrzení. Potvrzení odebere uložený řádek pouze z formuláře; API se volá až uložením rodičovského formuláře. Plná inventura, výjimky v názvech tlačítek, nevratnost, nepřítomné samostatné akce mazání a doporučení: [fe-audit-6.md](fe-audit-6.md). Typecheck, lint, 67 testů a produkční build prošly. Chromium 1440/390 px ověřil každý nový typ odebrání včetně odlišení pracovních řádků, zrušení a nulového počtu mutací před uložením. Modely, API ani backend se neměnily.
 
 Drobné zkrácení textů potvrzení: na přání odstraněna věta „Změna se uloží až potvrzením formuláře.“ ze všech tří sdílených popisů (úkony plánů/šablon, oprávnění/kvalifikace, vazby CCS karet). Potvrzení i ukládání beze změny. Ověřeno typecheckem, lintem, 67 testy, buildem a Chromium kontrolou odebrání uložených řádků na desktopu i mobilu.
+
+Dávka 7 / bod 1: centrální CCS nabídka, popisky a barvy; bezpečný fallback historických hodnot, nejednoznačné párování jako neúplný podklad. Sdílený stav tankování a položka Stav již existovaly. Kompatibilní model/API ponechány. Podrobnosti a výjimky: docs/fe-audit-7.md. Typecheck, lint a související testy prošly.
+
+Dávka 7 / bod 2: správní editor tankování má CCS stav; předvyplnění efektivním stavem a stejné sdílené volby, u řidiče pole není. Existující save/cache invalidace, bez nového datového pole. Odvozený skutečný rozdíl má přednost, nepodložený Rozdíl odmítá chyba pole. Typecheck, lint a 8 souvisejících testů prošly; viz docs/fe-audit-7.md.
+
+Dávka 7 / bod 3: sdílená notifikace jízdy/závady, podmínky neukončené/neúplné/nesrovnalé jízdy a správních rolí. Stejný Form, outbox a Make webhook; nový minimální příkaz trip.notify bez změny datových polí. Lokální stav nepředstírá odeslání. Podrobnosti: docs/fe-audit-7.md.
+Bod 3: typecheck, lint a 36 souvisejících testů prošly; kontrakty regenerovány.
+
+Dávka 7 / bod 4: jediný StatusChip a centrální mapy všech stavových entit, shodné popisky/barvy/typografie seznamu a detailu. Doplněny položky Stav do mřížek a sjednocena přidělení v dialogu; již shodné části pouze převedeny na společnou komponentu. Trvá je nadále otevřený konec období, typ Zakázka/Jízda zůstává text. Inventura před/po a záměrně odlišné významy: docs/fe-audit-7.md.
+Bod 4: typecheck, lint a 12 souvisejících testů prošly.
+
+Dávka 7 / bod 5: společné srozumitelné názvy odvozených termínů z FE projekce, bez změny uložených dat. Platnost STK/pojištění/oprávnění/kvalifikace a hranice servisního plánu obsahují jasný účel a podmět; ruční názvy a Doplnit koncový tachometr beze změny. Kalendář má ellipsis a plný title. Hledání/řazení již sdílelo název. Podrobnosti: docs/fe-audit-7.md.
+Bod 5: typecheck, lint a 25 souvisejících testů prošly. Chromium 1440/390 px ověřil CCS editaci/validaci a cache, podmínky notifikace i skrytí správních polí řidiči, shodný chip přidělení a nové názvy termínů v seznamu/kalendáři/detailu bez běhových chyb.
+
+Dávka 7 — závěr: všech 5 bodů dokončeno v 5 samostatných commitech na feat/fe-audit-7. Typecheck (i server), lint, všech 81 testů/22 souborů, build a opakovatelná regenerace kontraktů prošly. Chromium desktop/mobil ověřil také chybu služby, jeden pokus při dvojkliku, úspěšné opakování a krátkou blokaci notifikačního tlačítka. Konečný průchod bez běhových chyb. Datové modely a závislosti beze změny; jediným rozšířením API je nutný trip.notify. Podrobná inventura a kompatibilní výjimky: docs/fe-audit-7.md.
+
+Dávka 8: sdílený Back respektuje pevný cíl; dokumentový kontext přenesen do ověřeného URL parametru. Prokliky již používaly push. Typecheck, lint a navigační testy prošly; inventura a omezení obnovy stavu v docs/fe-audit-8-10.md.
+
+Dávka 9: přiřazení zakázky používá společný přístupný autocomplete, jen vhodné kandidáty a žádné pomocné podřádky. Výpočet vhodnosti a payload beze změny. Typecheck, lint a 26 souvisejících testů prošly; viz docs/fe-audit-8-10.md.
+
+Dávka 10: v detailu tankování odstraněno přimíchávání CCS dokumentů do tabulky řidiče; samotný CCS panel už vlastní dokumenty neměl. Ostatní dokumentové pohledy, data a layout zachovány. Typecheck, lint a 8 souvisejících testů prošly; viz docs/fe-audit-8-10.md.
+Dávky 8–10 závěr: všech 85 testů, typecheck, lint a produkční build prošly. Chromium 1440/390 px ověřil hierarchické šipky versus browser Back, reload, dokumentový URL kontext, autocomplete včetně klávesnice a uložení i oddělení dokladů tankování. Bez běhových chyb. Backend/modely/API/závislosti nezměněny.
