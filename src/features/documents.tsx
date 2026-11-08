@@ -25,6 +25,7 @@ import {
 } from "../components/ui";
 import { date, number } from "../lib/format";
 import { fileLimits } from "../data/uploads";
+import type { JobStatus } from "../data/contracts";
 import { documentDateField } from "../lib/form-validation";
 const types: Record<Document["ownerType"], Document["type"][]> = {
   vehicle: ["STK", "Pojištění", "Servisní doklad", "Příloha"],
@@ -36,6 +37,7 @@ const types: Record<Document["ownerType"], Document["type"][]> = {
   intake: ["STK"],
   expense: ["Příloha", "Servisní doklad"],
 };
+export type UploadResult = { validUntil: string | null; jobs: JobStatus[] };
 export function UploadDialog({
   ownerType,
   ownerId,
@@ -47,9 +49,9 @@ export function UploadDialog({
   ownerId: string;
   vehicleId?: string;
   type?: Document["type"];
-  onUploaded?: (result: { validUntil: string | null }) => void;
+  onUploaded?: (result: UploadResult) => void;
 }) {
-  const { upload, close } = useFleet();
+  const { upload, close, toast } = useFleet();
   const [selected, setSelected] = useState<File[]>([]),
     [docType, setDocType] = useState(type || types[ownerType][0]),
     [error, setError] = useState(""),
@@ -72,7 +74,7 @@ export function UploadDialog({
             setPending(true);
             setError("");
             try {
-              await upload({
+              const jobs = await upload({
                 ownerType,
                 ownerId,
                 vehicleId,
@@ -87,8 +89,18 @@ export function UploadDialog({
                 onUploaded({
                   validUntil:
                     dateField.key === "validUntil" ? validUntil || null : null,
+                  jobs,
                 });
-              else close();
+              else {
+                close();
+                const stk = jobs.find((j) => j.fields || j.error);
+                if (docType === "STK" && stk)
+                  toast(
+                    stk.fields?.stkUntil && stk.state === "completed"
+                      ? `STK načtena z PDF, platnost do ${date(stk.fields.stkUntil)}.`
+                      : stk.error || "STK uložena.",
+                  );
+              }
             } catch (err) {
               setError(err instanceof Error ? err.message : "Uložení selhalo.");
             } finally {
@@ -125,6 +137,12 @@ export function UploadDialog({
                 }
               />
             </Field>
+            {docType === "STK" && (
+              <small>
+                Když datum nevyplníte, načte se z nahraného PDF spolu s dalšími
+                údaji.
+              </small>
+            )}
           </div>
           <FilePicker
             maxBytes={
@@ -162,7 +180,7 @@ export function useUpload() {
     ownerId: string,
     vehicleId?: string,
     type?: Document["type"],
-    onUploaded?: (result: { validUntil: string | null }) => void,
+    onUploaded?: (result: UploadResult) => void,
   ) =>
     show(
       <UploadDialog

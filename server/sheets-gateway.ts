@@ -37,7 +37,9 @@ import {
 } from "../src/domain/models";
 import { commandSchema } from "../src/data/command-schema";
 import { fileLimits, validateUpload } from "../src/data/uploads";
-import type { Command, UploadInput } from "../src/data/contracts";
+import type { Command, JobStatus, UploadInput } from "../src/data/contracts";
+import type { StkExtraction } from "../src/domain/stk-extract";
+import { readStk } from "./stk-reader";
 import { normalize } from "../src/lib/format";
 
 const env = process.env;
@@ -230,8 +232,9 @@ type UploadSession = {
   input: UploadInput;
   file: { name: string; mime: string; size: number };
   stored?: { path: string; hash: string; size: number };
-  result?: { jobId: string; state: string };
+  result?: JobStatus;
 };
+const jobs = new Map<string, JobStatus>();
 const uploads = new Map<string, UploadSession>();
 const uploadKeys = new Map<string, string>();
 function addDocument(
@@ -239,6 +242,7 @@ function addDocument(
   actor: Actor,
   session: UploadSession,
   storageKey: string,
+  stk?: StkExtraction,
 ) {
   const { input, file, stored } = session;
   const scope = scopedWorkspace(s, actor);
@@ -308,22 +312,51 @@ function addDocument(
     storageKey,
     hash: stored!.hash,
     uploadedAt: m.createdAt,
-    validUntil: input.validUntil || null,
+    validUntil: input.validUntil || stk?.fields.stkUntil || null,
     dueAt: input.dueAt || null,
     fileState: "stored",
-    extraction: [
-      "Pracovní smlouva",
-      "Příloha",
-      "Dodací list",
-      "Servisní doklad",
-      "Pojištění",
-    ].includes(input.type)
-      ? "not_required"
-      : "not_configured",
+    extraction: stk
+      ? stk.state
+      : [
+            "Pracovní smlouva",
+            "Příloha",
+            "Dodací list",
+            "Servisní doklad",
+            "Pojištění",
+          ].includes(input.type)
+        ? "not_required"
+        : "not_configured",
     jobId: null,
-    error: "",
+    error: stk?.error || "",
     deletedAt: null,
   });
+  // STK for an existing vehicle: check it is the same car, then move the STK
+  // validity forward (never back, never from an unreadable value).
+  const vehicle =
+    stk && input.ownerType === "vehicle"
+      ? s.vehicles.find((v) => v.id === ownerId)
+      : undefined;
+  if (vehicle && stk) {
+    const plain = (v = "") => v.replace(/[\s-]/g, "").toUpperCase();
+    const mismatch =
+      (stk.fields.vin &&
+        vehicle.vin &&
+        plain(stk.fields.vin) !== plain(vehicle.vin)) ||
+      (stk.fields.spz && plain(stk.fields.spz) !== plain(vehicle.spz));
+    if (mismatch) {
+      doc.extraction = "incomplete";
+      doc.validUntil = input.validUntil || null;
+      doc.error = `SPZ/VIN v dokumentu nesouhlasí s vozidlem ${vehicle.spz}. Platnost STK nebyla změněna.`;
+    } else if (
+      stk.fields.stkUntil &&
+      (!vehicle.stkUntil || stk.fields.stkUntil > vehicle.stkUntil)
+    )
+      Object.assign(vehicle, {
+        stkUntil: stk.fields.stkUntil,
+        updatedAt: new Date().toISOString(),
+        version: vehicle.version + 1,
+      });
+  }
   s.documents.push(doc);
   return { doc, duplicate: false };
 }
@@ -580,18 +613,32 @@ const server = createServer(async (req, res) => {
       if (session.result) return json(res, 200, session.result);
       if (!session.stored) fail(409, "Soubor ještě nebyl nahrán.");
       const storageKey = randomUUID();
+      const stk =
+        session.input.type === "STK"
+          ? await readStk(session.stored!.path, session.file.mime)
+          : undefined;
       const { doc, duplicate } = await mutate((next) =>
-        addDocument(next, session.actor, session, storageKey),
+        addDocument(next, session.actor, session, storageKey, stk),
       );
       if (duplicate) await rm(session.stored!.path, { force: true });
       else await rename(session.stored!.path, join(filesDir, storageKey));
-      session.result = {
-        jobId: doc.id,
-        state:
-          doc.extraction === "not_required" || duplicate
-            ? "completed"
-            : "not_configured",
-      };
+      session.result =
+        stk && !duplicate
+          ? {
+              jobId: doc.id,
+              state: doc.extraction as JobStatus["state"],
+              fields: stk.fields,
+              missingFields: stk.missingFields,
+              error: doc.error || undefined,
+            }
+          : {
+              jobId: doc.id,
+              state:
+                doc.extraction === "not_required" || duplicate
+                  ? "completed"
+                  : "not_configured",
+            };
+      jobs.set(doc.id, session.result);
       return json(res, 200, session.result);
     }
     const file = path.match(/^\/v1\/documents\/([^/]+)\/content$/);
@@ -621,10 +668,14 @@ const server = createServer(async (req, res) => {
     }
     const job = path.match(/^\/v1\/jobs\/([^/]+)$/);
     if (req.method === "GET" && job)
-      return json(res, 200, {
-        jobId: decodeURIComponent(job[1]),
-        state: "not_configured",
-      });
+      return json(
+        res,
+        200,
+        jobs.get(decodeURIComponent(job[1])) || {
+          jobId: decodeURIComponent(job[1]),
+          state: "not_configured",
+        },
+      );
     return json(res, 404, { message: "Not found" });
   } catch (error) {
     if (error instanceof ZodError) {

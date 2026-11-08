@@ -7,14 +7,19 @@ import {
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Actor, Workspace } from "../domain/models";
-import type { Command, Repository, UploadInput } from "../data/contracts";
+import type {
+  Command,
+  JobStatus,
+  Repository,
+  UploadInput,
+} from "../data/contracts";
 import { Button, ActionConfirmation, Notice } from "../components/ui";
 type ContextValue = {
   s: Workspace;
   actor: Actor;
   repo: Repository;
   run: (command: Command, key?: string) => Promise<void>;
-  upload: (input: UploadInput) => Promise<void>;
+  upload: (input: UploadInput) => Promise<JobStatus[]>;
   show: (content: ReactNode) => void;
   close: () => void;
   toast: (message: string) => void;
@@ -81,8 +86,9 @@ export function WorkspaceProvider({
       await refresh();
     },
     upload: async (input) => {
-      await repo.upload(actor, input);
+      const jobs = await repo.upload(actor, input);
       await refresh();
+      return jobs;
     },
   };
   return (

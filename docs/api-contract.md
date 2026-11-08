@@ -10,7 +10,7 @@ Základ URL nastaví `VITE_API_BASE_URL`, např. vlastní gateway s prefixem `/v
 | identities     | GET /actor-options → [{id,name}] dostupných řidičských kontextů                                                                                                                                       |
 | search         | POST /search {query} → [{id,type,title,subtitle,path}]; hledání přes celou povolenou evidenci, bezpečné vnitřní cesty                                                                                 |
 | execute        | POST /commands + Idempotency-Key → 204 až po dokončené transakci; typ příkazu v JSON                                                                                                                  |
-| upload         | POST /uploads → {uploadId}; PUT /uploads/:id/content s binárním tělem; POST /uploads/:id/complete → 202/200 {jobId,state,missingFields?,error?}                                                       |
+| upload         | POST /uploads → {uploadId}; PUT /uploads/:id/content s binárním tělem; POST /uploads/:id/complete → 202/200 {jobId,state,missingFields?,error?,fields?}                                               |
 | job            | GET /jobs/:id → skutečný stav; queued/processing/completed/incomplete/failed/not_configured                                                                                                           |
 | file           | GET /documents/:id/content → oprávněný PDF/JPEG/PNG stream; žádná trvale uložená expirovaná URL                                                                                                       |
 
@@ -55,3 +55,7 @@ Izolovaný Node HTTP server v `tests/http.test.ts` ověřuje read, identity, sea
 ### Připomenutí údajů jízdy
 
 Příkaz `trip.notify` (`id`, `email`, `message`) je určen správě (Fleet manažer/Vedení). Je povolen jen u neukončené/neúplné jízdy nebo nesrovnalosti tachometru. Vytváří stejný záznam `notifications` jako `fault.notify`: příjemcem je řidič jízdy, `aggregateId` je ID jízdy, `serviceAt` je null. Stávající Make e-mailová brána doručí požadavek, pokud je nastavená. Lokální režim zachová `not_configured`; nejde o důkaz odeslání. Bez nových polí a nového kanálu; externí implementace API musí tento nový příkaz podporovat.
+
+## Čtení STK (gateway nad Sheets)
+
+`POST /uploads/:id/complete` u typu `STK` přečte textovou vrstvu PDF (`server/stk-reader.ts`, parser `src/domain/stk-extract.ts`) a vrátí `fields` (SPZ, VIN, značka podle WMI z VIN, kategorie podle kódu M1/N1–N3, platnost STK, datum prohlídky, tachometr, výsledek, číslo protokolu) a stav `completed` / `incomplete` (+ `missingFields`) / `failed` (+ `error`). Hodnota „NEDOLOŽENO“ nebo neplatný údaj zůstane prázdný, nic se neodhaduje. Sken bez textu a fotografie = `failed` s vysvětlením; uživatel údaje doplní ručně. U STK nahrané k existujícímu vozidlu se ověří SPZ/VIN (nesoulad = `incomplete`, platnost se nemění) a platnost STK vozidla se jen posune dopředu. `document.link` u STK dělá totéž. `GET /jobs/:id` vrací uložený výsledek (paměť procesu; po restartu `not_configured`, stav dokumentu zůstává v listu `documents`). Lokální režim (Pages) čtení nemá a pravdivě vrací `not_configured`.

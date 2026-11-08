@@ -12,6 +12,7 @@ import { DomainError, manager, scopedWorkspace } from "../domain/rules";
 import { normalize } from "../lib/format";
 import type {
   CommandEnvelope,
+  JobStatus,
   Repository,
   SearchResult,
   UploadInput,
@@ -78,6 +79,8 @@ export class LocalRepository implements Repository {
     const blobs = await Promise.all(
       input.files.map(async (f) => ({ file: f, hash: await hash(f) })),
     );
+    // Local (demo) mode has no extraction service: report it truthfully.
+    const jobs: JobStatus[] = [];
     await this.db.transaction(
       "rw",
       [this.db.state, this.db.files, this.db.operations],
@@ -181,6 +184,11 @@ export class LocalRepository implements Repository {
             });
           await this.db.files.put({ id: doc.storageKey, blob: file });
           s.documents.push(doc);
+          jobs.push({
+            jobId: doc.id,
+            state:
+              doc.extraction === "not_required" ? "completed" : "not_configured",
+          });
         }
         await this.db.state.put({ id: "workspace", data: s });
         await this.db.operations.put({
@@ -189,6 +197,7 @@ export class LocalRepository implements Repository {
         });
       },
     );
+    return jobs;
   }
   async file(actor: Actor, id: string) {
     const s = await this.read(actor),

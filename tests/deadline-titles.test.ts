@@ -80,3 +80,27 @@ it("odvozené názvy obsahují účel i podmět a nemění zdrojová data", () =
   });
   expect(s).toEqual(before);
 });
+it("starší (historická) STK nevytvoří prošlý termín, novější ano", () => {
+  const s = fixture(); // vozidlo v1 má platnost STK 2030-12-31
+  const stk = (id: string, validUntil: string) =>
+    collections.documents.parse({
+      ...meta(id),
+      ownerType: "vehicle",
+      ownerId: "v1",
+      vehicleId: "v1",
+      type: "STK",
+      name: id + ".pdf",
+      mime: "application/pdf",
+      size: 100,
+      storageKey: id,
+      hash: id,
+      uploadedAt: "2026-11-08T00:00:00Z",
+      validUntil,
+      fileState: "stored",
+      extraction: "completed",
+    });
+  s.documents.push(stk("stara", "2024-05-01"));
+  expect(deadlines(s).some((d) => d.id === "doc-stara")).toBe(false);
+  s.documents.push(stk("nova", "2032-05-01"));
+  expect(deadlines(s).some((d) => d.id === "doc-nova")).toBe(true);
+});

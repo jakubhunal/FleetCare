@@ -6,6 +6,7 @@ import { scopedWorkspace } from "../domain/rules";
 import { authorizeCommand } from "../domain/access";
 import { commandSchema } from "./command-schema";
 import { validateUpload } from "./uploads";
+import { stkFieldsSchema } from "../domain/stk-extract";
 const searchSchema = z.array(
   z.object({
     id: z.string(),
@@ -27,6 +28,7 @@ const jobSchema = z.object({
   ]),
   missingFields: z.array(z.string()).optional(),
   error: z.string().optional(),
+  fields: stkFieldsSchema.optional(),
 });
 const actorSchema = z.object({
   role: z.enum(roles),
@@ -167,6 +169,7 @@ export class HttpRepository implements Repository {
   }
   async upload(actor: Actor, input: UploadInput, signal?: AbortSignal) {
     validateUpload(input);
+    const jobs = [];
     for (let i = 0; i < input.files.length; i++) {
       const file = input.files[i];
       const response = await this.request("/uploads", actor, {
@@ -206,8 +209,9 @@ export class HttpRepository implements Repository {
           signal,
         },
       );
-      jobSchema.parse(await finish.json());
+      jobs.push(jobSchema.parse(await finish.json()));
     }
+    return jobs;
   }
   async file(actor: Actor, id: string, signal?: AbortSignal) {
     const r = await this.request(

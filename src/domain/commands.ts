@@ -761,12 +761,19 @@ export function applyCommand(
     manager(actor);
     const d = find(s, "documents", c.id);
     ensure(d.ownerType === "intake", "Dokument už má vlastníka.");
-    find(s, "vehicles", c.vehicleId);
+    const vehicle = find(s, "vehicles", c.vehicleId);
     Object.assign(d, touch(d), {
       ownerType: "vehicle",
       ownerId: c.vehicleId,
       vehicleId: c.vehicleId,
     });
+    // An STK read for a car already in the fleet only moves its validity forward.
+    if (
+      d.type === "STK" &&
+      d.validUntil &&
+      (!vehicle.stkUntil || d.validUntil > vehicle.stkUntil)
+    )
+      Object.assign(vehicle, touch(vehicle), { stkUntil: d.validUntil });
   }
   for (const key of Object.keys(collections) as Collection[]) {
     if (key === "events") continue;

@@ -1,3 +1,4 @@
+import type { StkFields } from "../domain/stk-extract";
 import type { Actor, Collection, Document, Workspace } from "../domain/models";
 export type EditableCollection = Extract<
   Collection,
@@ -126,6 +127,8 @@ export type JobStatus = {
     | "failed";
   missingFields?: string[];
   error?: string;
+  /** Values read from an uploaded STK (gateway only). */
+  fields?: StkFields;
 };
 export interface Repository {
   readonly mode: "local" | "http";
@@ -141,7 +144,11 @@ export interface Repository {
     query: string,
     signal?: AbortSignal,
   ): Promise<SearchResult[]>;
-  upload(actor: Actor, input: UploadInput, signal?: AbortSignal): Promise<void>;
+  upload(
+    actor: Actor,
+    input: UploadInput,
+    signal?: AbortSignal,
+  ): Promise<JobStatus[]>;
   file(actor: Actor, id: string, signal?: AbortSignal): Promise<Blob>;
   job(actor: Actor, id: string, signal?: AbortSignal): Promise<JobStatus>;
 }

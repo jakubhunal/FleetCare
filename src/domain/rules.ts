@@ -207,12 +207,7 @@ export function orderAssignmentCandidates(
         vehicle,
         driver,
         result: suitability(s, order, vehicle, driver),
-        conflicts: orderAssignmentConflicts(
-          s,
-          order.id,
-          vehicle.id,
-          driver.id,
-        ),
+        conflicts: orderAssignmentConflicts(s, order.id, vehicle.id, driver.id),
       },
     ];
   });
@@ -359,11 +354,10 @@ export function deadlines(s: Workspace, now = new Date()) {
       )
     )
       continue;
-    if (
-      doc.type === "STK" &&
-      s.vehicles.find((v) => v.id === doc.vehicleId)?.stkUntil === term
-    )
-      continue;
+    // The vehicle's STK validity is the authoritative term; an older
+    // (historical) protocol must not resurface as an overdue deadline.
+    const stkUntil = s.vehicles.find((v) => v.id === doc.vehicleId)?.stkUntil;
+    if (doc.type === "STK" && stkUntil && stkUntil >= term) continue;
     if (
       result.some(
         (x) =>

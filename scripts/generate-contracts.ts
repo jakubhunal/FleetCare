@@ -338,6 +338,24 @@ const document = {
           },
           missingFields: { type: "array", items: { type: "string" } },
           error: { type: "string" },
+          fields: {
+            type: "object",
+            description:
+              "Údaje přečtené z nahrané STK (jen typ STK v gateway nad Sheets).",
+            properties: {
+              spz: { type: "string" },
+              vin: { type: "string" },
+              model: { type: "string" },
+              category: {
+                enum: ["Kamion", "Nákladní vozidlo", "Dodávka", "Osobní auto"],
+              },
+              stkUntil: { type: "string", format: "date" },
+              inspectionDate: { type: "string", format: "date" },
+              odometerKm: { type: "number" },
+              result: { type: "string" },
+              protocolNo: { type: "string" },
+            },
+          },
         },
       },
       Error: {
