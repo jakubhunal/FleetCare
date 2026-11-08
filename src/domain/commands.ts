@@ -369,6 +369,16 @@ export function applyCommand(
     }
     if (old) list[list.findIndex((x) => x.id === old.id)] = parsed;
     else list.push(parsed);
+    // "Přidat vozidlo → Nahrát STK" uploads the protocol as an intake document
+    // keyed by the future vehicle id; creating that vehicle claims it.
+    if (c.collection === "vehicles" && !old)
+      for (const d of s.documents)
+        if (d.ownerType === "intake" && d.ownerId === parsed.id && !d.deletedAt)
+          Object.assign(d, touch(d), {
+            ownerType: "vehicle",
+            ownerId: parsed.id,
+            vehicleId: parsed.id,
+          });
   } else if (c.type === "ccs.reconcile") {
     manager(actor);
     find(s, "statements", c.statementId);
@@ -479,7 +489,9 @@ export function applyCommand(
       find(s, "vehicles", c.vehicleId),
       find(s, "drivers", c.driverId),
     );
-    ensure(result.state === "Vhodné", result.reasons.join(" · "));
+    // Missing data ("Nelze vyhodnotit") is shown as a warning in the dialog;
+    // only a confirmed conflict blocks the assignment.
+    ensure(result.state !== "Nevhodné", result.reasons.join(" · "));
     Object.assign(o, touch(o), {
       vehicleId: c.vehicleId,
       driverId: c.driverId,
@@ -582,7 +594,9 @@ export function applyCommand(
   } else if (c.type === "fault.notify") {
     manager(actor);
     const f = find(s, "faults", c.id);
-    ensure(f.serviceFrom && c.serviceAt, "Nejdříve doplňte termín servisu.");
+    // The dialog carries its own service date; the fault itself may not have
+    // a planned service yet.
+    ensure(c.serviceAt, "Doplňte termín servisu.", "serviceAt");
     ensure(
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email),
       "Doplňte platného příjemce.",

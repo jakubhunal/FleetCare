@@ -205,7 +205,7 @@ export function editorFields(
               f("serviceTo", "Servis do", "datetime"),
               f("repair", "Popis opravy", "textarea"),
               f("actualMinor", "Skutečná cena (nenahrazuje výdaj)", "money"),
-              currency,
+              { ...currency, required: false },
             ]
           : []),
       ];
@@ -887,13 +887,15 @@ export function EntityEditor({
   record,
   defaults = {},
   startTrip = false,
+  notice,
 }: {
   collection: EditableCollection;
   record?: Entity;
   defaults?: Record<string, unknown>;
   startTrip?: boolean;
+  notice?: string;
 }) {
-  const { s, actor, run, upload, close } = useFleet();
+  const { s, actor, run, upload, close, toast } = useFleet();
   const { confirmDelete, confirmation } = useConfirmDelete();
   const [attachment, setAttachment] = useState<File[]>([]);
   const [savedExpenseVehicle, setSavedExpenseVehicle] = useState<string | null>(
@@ -1004,6 +1006,7 @@ export function EntityEditor({
     >
       <div className="dialog-body">
         {confirmation}
+        {notice && <Notice>{notice}</Notice>}
         <Form
           fields={fields}
           validate={
@@ -1125,6 +1128,7 @@ export function EntityEditor({
               }
               if (attachment.length) await upload(input);
               close();
+              toast("Výdaj je uložený.");
               return;
             }
             if (startTrip) await run({ type: "trip.start", data: values }, key);
@@ -1140,6 +1144,18 @@ export function EntityEditor({
                 key,
               );
             close();
+            // run() resolves only after the server confirmed the write.
+            toast(
+              startTrip
+                ? "Jízda je zahájená."
+                : driverMode && trip
+                  ? "Jízda je ukončená a uložená."
+                  : !record && collection === "faults"
+                    ? "Závada je nahlášená."
+                    : !record && collection === "fuels"
+                      ? "Tankování je uložené."
+                      : "Změny jsou uložené.",
+            );
           }}
         >
           {collection === "expenses" && !record && (
@@ -1287,6 +1303,7 @@ export function useEditors() {
     record?: Entity,
     defaults?: Record<string, unknown>,
     startTrip = false,
+    notice?: string,
   ) =>
     show(
       collection === "plans" ? (
@@ -1306,6 +1323,7 @@ export function useEditors() {
           record={record}
           defaults={defaults}
           startTrip={startTrip}
+          notice={notice}
         />
       ),
     );

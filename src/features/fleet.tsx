@@ -1,5 +1,4 @@
 import { useHistory } from "../lib/history";
-import { DocumentLink } from "./documents";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -46,9 +45,6 @@ import { date, localTime, number, toPragueTimestamp } from "../lib/format";
 import type { Vehicle } from "../domain/models";
 export function VehiclesPage() {
   const { s } = useFleet();
-  const intake = s.documents.filter(
-    (d) => d.ownerType === "intake" && !d.deletedAt,
-  );
   return (
     <>
       <PageHead
@@ -58,16 +54,6 @@ export function VehiclesPage() {
       <Panel>
         <VehicleTable rows={s.vehicles} toolbarActions={<AddVehicleButton />} />
       </Panel>
-      {!!intake.length && (
-        <Panel title="STK pro založení vozidla">
-          {intake.map((d) => (
-            <p key={d.id}>
-              <DocumentLink to={`/documents/${d.id}`}>{d.name}</DocumentLink>{" "}
-              <Badge value={d.extraction} />
-            </p>
-          ))}
-        </Panel>
-      )}
     </>
   );
 }

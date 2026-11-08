@@ -167,6 +167,7 @@ export function OrderPage() {
     </>
   );
 }
+const suitabilityRank = { Vhodné: 0, "Nelze vyhodnotit": 1, Nevhodné: 2 };
 export function OrderAssignmentDialog({ orderId }: { orderId: string }) {
   const { s, actor, run, close } = useFleet();
   const o = s.orders.find((o) => o.id === orderId);
@@ -176,15 +177,36 @@ export function OrderAssignmentDialog({ orderId }: { orderId: string }) {
   const [busy, setBusy] = useState(false);
   if (!o || actor.role === "Řidič") return null;
   const vehicle = s.vehicles.find((v) => v.id === vehicleId) || null;
-  const vehicles = s.vehicles.filter(
-    (v) => suitability(s, o, v, null).state === "Vhodné",
-  );
-  const drivers = vehicle
-    ? s.drivers.filter((d) => suitability(s, o, vehicle, d).state === "Vhodné")
+  // Missing data does not block the assignment (the server rejects only
+  // "Nevhodné"); the manager sees exactly what could not be verified.
+  const vehicles = s.vehicles
+    .filter((v) => v.state !== "Odstaveno" || v.id === o.vehicleId)
+    .map((v) => ({ v, r: suitability(s, o, v, null) }))
+    .sort((a, b) => suitabilityRank[a.r.state] - suitabilityRank[b.r.state]);
+  const vehicleReasons = vehicle
+    ? suitability(s, o, vehicle, null).reasons
     : [];
+  const drivers = vehicle
+    ? s.drivers
+        .map((d) => {
+          const r = suitability(s, o, vehicle, d);
+          return {
+            d,
+            r,
+            own: r.reasons.filter((x) => !vehicleReasons.includes(x)),
+          };
+        })
+        .sort((a, b) => suitabilityRank[a.r.state] - suitabilityRank[b.r.state])
+    : [];
+  const pickedVehicle = vehicles.find((x) => x.v.id === vehicleId);
+  const picked = drivers.find((x) => x.d.id === driverId);
   const valid =
-    vehicles.some((v) => v.id === vehicleId) &&
-    drivers.some((d) => d.id === driverId);
+    !!pickedVehicle &&
+    pickedVehicle.r.state !== "Nevhodné" &&
+    !!picked &&
+    picked.r.state !== "Nevhodné";
+  const unverified =
+    valid && picked.r.state === "Nelze vyhodnotit" ? picked.r.reasons : [];
   return (
     <Dialog
       title="Přiřadit vozidlo a řidiče"
@@ -196,12 +218,13 @@ export function OrderAssignmentDialog({ orderId }: { orderId: string }) {
       <div className="dialog-body">
         <div className="two-columns">
           <Panel title="Vozidlo">
-            {vehicles.map((v) => (
+            {vehicles.map(({ v, r }) => (
               <label className="candidate" key={v.id}>
                 <input
                   type="radio"
                   name="vehicle"
                   checked={vehicleId === v.id}
+                  disabled={r.state === "Nevhodné"}
                   onChange={() => {
                     setVehicle(v.id);
                     setDriver("");
@@ -212,36 +235,46 @@ export function OrderAssignmentDialog({ orderId }: { orderId: string }) {
                     {v.spz} · {v.model}
                   </strong>
                   <small>
-                    {number(v.capacityKg, "kg")} · {number(v.volumeM3, "m³")}
+                    {r.state}
+                    {r.reasons.length ? ": " + r.reasons.join(", ") : ""}
                   </small>
                 </span>
               </label>
             ))}
             {!vehicles.length && (
-              <p className="muted">Žádné doloženě vhodné vozidlo.</p>
+              <p className="muted">Žádné vozidlo v provozu.</p>
             )}
           </Panel>
           <Panel title="Řidič zakázky">
-            {drivers.map((d) => (
+            {drivers.map(({ d, r, own }) => (
               <label className="candidate" key={d.id}>
                 <input
                   type="radio"
                   name="driver"
                   checked={driverId === d.id}
+                  disabled={r.state === "Nevhodné"}
                   onChange={() => setDriver(d.id)}
                 />
-                <strong>{d.name}</strong>
+                <span>
+                  <strong>{d.name}</strong>
+                  {!!own.length && <small>{own.join(", ")}</small>}
+                </span>
               </label>
             ))}
             {!drivers.length && (
               <p className="muted">
-                {vehicle
-                  ? "Žádný doloženě vhodný řidič."
-                  : "Nejprve vyberte vozidlo."}
+                {vehicle ? "Žádný řidič." : "Nejprve vyberte vozidlo."}
               </p>
             )}
           </Panel>
         </div>
+        {!!unverified.length && (
+          <Notice>
+            Vhodnost nelze plně ověřit: {unverified.join(", ")}. Přiřazení
+            půjde uložit, údaje doplňte v detailu vozidla, řidiče nebo
+            zakázky.
+          </Notice>
+        )}
         {error && <Notice error>{error}</Notice>}
         <div className="form-actions">
           <Button

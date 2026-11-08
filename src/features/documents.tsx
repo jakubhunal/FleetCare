@@ -39,11 +39,13 @@ export function UploadDialog({
   ownerId,
   vehicleId,
   type,
+  onUploaded,
 }: {
   ownerType: Document["ownerType"];
   ownerId: string;
   vehicleId?: string;
   type?: Document["type"];
+  onUploaded?: (result: { validUntil: string | null }) => void;
 }) {
   const { upload, close } = useFleet();
   const [selected, setSelected] = useState<File[]>([]),
@@ -79,7 +81,12 @@ export function UploadDialog({
                 dueAt: dateField.key === "dueAt" ? dueAt || null : null,
                 idempotencyKey: key,
               });
-              close();
+              if (onUploaded)
+                onUploaded({
+                  validUntil:
+                    dateField.key === "validUntil" ? validUntil || null : null,
+                });
+              else close();
             } catch (err) {
               setError(err instanceof Error ? err.message : "Uložení selhalo.");
             } finally {
@@ -154,6 +161,7 @@ export function useUpload() {
     ownerId: string,
     vehicleId?: string,
     type?: Document["type"],
+    onUploaded?: (result: { validUntil: string | null }) => void,
   ) =>
     show(
       <UploadDialog
@@ -161,6 +169,7 @@ export function useUpload() {
         ownerId={ownerId}
         vehicleId={vehicleId}
         type={type}
+        onUploaded={onUploaded}
       />,
     );
 }

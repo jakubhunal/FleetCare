@@ -467,3 +467,110 @@ describe("VIN edits", () => {
     expect(s.vehicles[0].vin).toBe("WVWZZZ1JZXW000002");
   });
 });
+
+describe("Opravy z testů 7. 11.", () => {
+  it("notifikace řidiče bere termín z dialogu, i když závada termín nemá", () => {
+    const s = fixture();
+    applyCommand(s, manager, {
+      type: "vehicle.assign",
+      vehicleId: "v1",
+      version: 1,
+      driverId: "d1",
+      from: "2026-11-01T08:00:00Z",
+      reason: "test",
+      odometer: null,
+    });
+    applyCommand(s, manager, {
+      type: "save",
+      collection: "faults",
+      data: {
+        vehicleId: "v1",
+        category: "Jiné",
+        description: "Bez naplánovaného servisu",
+        at: "2026-11-01T10:00:00Z",
+        urgency: "Nízká",
+        state: "Nahlášena",
+        caseReference: "CASE-N",
+      },
+    });
+    const fault = s.faults[0];
+    expect(fault.serviceFrom).toBeNull();
+    applyCommand(s, manager, {
+      type: "fault.notify",
+      id: fault.id,
+      email: "driver@example.test",
+      serviceAt: "2026-11-10T08:00:00Z",
+      place: "Praha",
+      message: "Servis",
+    });
+    expect(s.notifications.at(-1)).toMatchObject({
+      recipientRole: "driver",
+      serviceAt: "2026-11-10T08:00:00Z",
+    });
+  });
+  it("přiřazení zakázky projde s chybějícími údaji, nevhodné odmítne", () => {
+    const s = fixture();
+    s.vehicles[0].stkUntil = null;
+    expect(
+      suitability(s, s.orders[0], s.vehicles[0], s.drivers[0]).state,
+    ).toBe("Nelze vyhodnotit");
+    applyCommand(s, manager, {
+      type: "order.assign",
+      id: "o1",
+      version: 1,
+      vehicleId: "v1",
+      driverId: "d1",
+    });
+    expect(s.orders[0]).toMatchObject({ vehicleId: "v1", state: "Přiřazená" });
+    s.vehicles[0].capacityKg = 10;
+    expect(() =>
+      applyCommand(s, manager, {
+        type: "order.assign",
+        id: "o1",
+        version: s.orders[0].version,
+        vehicleId: "v1",
+        driverId: "d1",
+      }),
+    ).toThrow(/Nedostatečná kapacita/);
+  });
+  it("nové vozidlo převezme STK nahranou přes Nahrát STK", () => {
+    const s = fixture();
+    s.documents.push(
+      collections.documents.parse({
+        ...meta("doc-stk"),
+        ownerType: "intake",
+        ownerId: "veh-new",
+        vehicleId: null,
+        type: "STK",
+        name: "stk.pdf",
+        mime: "application/pdf",
+        size: 10,
+        storageKey: "k",
+        hash: "h",
+        uploadedAt: "2026-11-07T10:00:00Z",
+        extraction: "not_configured",
+        fileState: "stored",
+      }),
+    );
+    applyCommand(s, manager, {
+      type: "save",
+      collection: "vehicles",
+      data: {
+        id: "veh-new",
+        spz: "9T9 0001",
+        model: "TEST",
+        category: "Dodávka",
+        state: "V provozu",
+        stkUntil: "2027-06-30",
+      },
+    });
+    expect(s.vehicles.find((v) => v.id === "veh-new")?.stkUntil).toBe(
+      "2027-06-30",
+    );
+    expect(s.documents[0]).toMatchObject({
+      ownerType: "vehicle",
+      ownerId: "veh-new",
+      vehicleId: "veh-new",
+    });
+  });
+});
