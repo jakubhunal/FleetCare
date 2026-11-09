@@ -318,6 +318,16 @@ export function StatementPage() {
           items={[
             ["Stav", <StatusChip entity="statement" value={x.processing} />],
             ["Úplnost", x.complete ? "Úplný" : "Neúplný / nezpracovaný"],
+            ["Číslo dokladu", x.externalId || "—"],
+            [
+              "Období",
+              x.periodFrom
+                ? `${date(x.periodFrom)} — ${date(x.periodTo)}`
+                : "—",
+            ],
+            ...(x.error
+              ? ([["Poznámka ke zpracování", x.error]] as [string, string][])
+              : []),
           ]}
         />
       </Panel>

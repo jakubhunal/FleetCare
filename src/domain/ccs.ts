@@ -1,7 +1,8 @@
 import { ccsStatus } from "../lib/status";
 import { DomainError } from "./rules";
 import { dateKey } from "../lib/format";
-import type { Workspace } from "./models";
+import { collections, meta, type Workspace } from "./models";
+import type { CcsExtraction } from "./ccs-extract";
 type Fuel = Workspace["fuels"][number];
 /** CCS transactions linked to a fuel record that still disagree with it. */
 export function fuelDifferences(s: Workspace, f: Fuel) {
@@ -107,4 +108,116 @@ export function validateFuelCCSState(s: Workspace, f: Fuel) {
       "Stav Rozdíl lze zvolit jen u spárovaného tankování s nevyřešeným rozdílem.",
       "state",
     );
+}
+
+const plain = (v = "") => v.replace(/[^0-9A-Z]/gi, "").toUpperCase();
+/**
+ * Stores the fuel rows read from a CCS statement as its transactions and pairs
+ * them with fuel records. A card is recognised by its number in the card
+ * block header, the vehicle by the plate there (otherwise by the card binding
+ * during pairing). A transaction already imported from another statement
+ * (same card, time, amount and litres) is not created twice, so a corrected
+ * statement cannot double a cost. Rows that are not fuel (car wash, tolls)
+ * are counted, never turned into fuel costs.
+ */
+export function importCcsStatement(
+  s: Workspace,
+  statementId: string,
+  x: CcsExtraction,
+) {
+  const statement = s.statements.find((st) => st.id === statementId);
+  if (!statement) throw new DomainError("Výpis není dostupný.");
+  const cards = s.cards
+    .map((c) => ({ card: c, key: plain(c.number) }))
+    .filter((c) => c.key.length >= 6)
+    .sort((a, b) => b.key.length - a.key.length);
+  const now = new Date().toISOString();
+  let created = 0,
+    known = 0,
+    other = 0;
+  x.rows.forEach((row, i) => {
+    if (!row.fuel) {
+      other++;
+      return;
+    }
+    const block = x.blocks[row.block];
+    const header = plain(block?.header);
+    const card = cards.find((c) => header.includes(c.key))?.card;
+    const vehicle = block?.plate
+      ? s.vehicles.find((v) => plain(v.spz) === plain(block.plate!))
+      : undefined;
+    const litres = Math.round(row.quantity * 1000) / 1000;
+    if (
+      s.transactions.some(
+        (t) =>
+          t.cardId === (card?.id ?? null) &&
+          (card || t.vehicleId === (vehicle?.id ?? null)) &&
+          Date.parse(t.at) === Date.parse(row.at) &&
+          t.amountMinor === row.amountMinor &&
+          t.litres === litres,
+      )
+    ) {
+      known++;
+      return;
+    }
+    s.transactions.push(
+      collections.transactions.parse({
+        ...meta(),
+        source: "import",
+        statementId,
+        externalId: `${x.number || statement.name} · s. ${row.page} · ${i + 1}`,
+        vehicleId: vehicle?.id ?? null,
+        cardId: card?.id ?? null,
+        at: row.at,
+        amountMinor: row.amountMinor,
+        currency: row.currency,
+        litres,
+        fuelId: null,
+        state: "Čeká na výpis",
+        resolvedMinor: null,
+        resolution: "",
+      }),
+    );
+    created++;
+  });
+  reconcileCCS(s, statementId);
+  const mine = s.transactions.filter((t) => t.statementId === statementId);
+  const count = (state: string) => mine.filter((t) => t.state === state).length;
+  const pairing = [
+    count("Spárováno") && `spárováno ${count("Spárováno")}`,
+    count("Rozdíl") && `rozdíl ${count("Rozdíl")}`,
+    count("Chybí záznam řidiče") &&
+      `bez záznamu řidiče ${count("Chybí záznam řidiče")}`,
+    count("Neúplný podklad") &&
+      `neúplný podklad ${count("Neúplný podklad")} – karta není v evidenci nebo nemá toleranci`,
+  ].filter(Boolean);
+  const message = [
+    `Transakce paliva: ${created}${pairing.length ? ` (${pairing.join(", ")})` : ""}.`,
+    known && `Už dříve importované, nezaloženy znovu: ${known}.`,
+    other && `Položky mimo palivo (např. mytí), které se nepárují: ${other}.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  Object.assign(statement, {
+    externalId: x.number,
+    periodFrom:
+      x.periodFrom ||
+      (x.rows.length ? dateKey(x.rows.map((r) => r.at).sort()[0]) : null),
+    periodTo:
+      x.periodTo ||
+      (x.rows.length
+        ? dateKey(
+            x.rows
+              .map((r) => r.at)
+              .sort()
+              .at(-1)!,
+          )
+        : null),
+    processing: x.state,
+    complete: x.state === "completed",
+    error: x.error || "",
+    updatedAt: now,
+    version: statement.version + 1,
+  });
+  return { created, known, other, message };
 }

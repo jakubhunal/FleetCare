@@ -327,6 +327,10 @@ export function deadlines(s: Workspace, now = new Date()) {
         ? "Splněno"
         : x.state,
     owner: x.responsible,
+    vehicleId: x.vehicleId || null,
+    driverId: x.driverId || null,
+    kind: x.type as string,
+    detail: "",
     path: x.vehicleId
       ? `/vehicles/${x.vehicleId}/documents`
       : x.driverId
@@ -376,6 +380,10 @@ export function deadlines(s: Workspace, now = new Date()) {
       km: null,
       state: term < today() ? "Vyžaduje řešení" : "Plánováno",
       owner: "Fleet manažer",
+      vehicleId: doc.vehicleId,
+      driverId: null,
+      kind: doc.type,
+      detail: "",
       path: `/documents/${doc.id}`,
       derived: true,
     });
@@ -389,6 +397,10 @@ export function deadlines(s: Workspace, now = new Date()) {
         km: null,
         state: v.stkUntil < today() ? "Vyžaduje řešení" : "Plánováno",
         owner: "Fleet manažer",
+        vehicleId: v.id,
+        driverId: null,
+        kind: "STK",
+        detail: "",
         path: `/vehicles/${v.id}/documents`,
         derived: true,
       });
@@ -406,6 +418,10 @@ export function deadlines(s: Workspace, now = new Date()) {
             km: null,
             state: l.validUntil < today() ? "Vyžaduje řešení" : "Plánováno",
             owner: d.name,
+            vehicleId: null,
+            driverId: d.id,
+            kind: type,
+            detail: l.name,
             path: `/drivers/${d.id}/overview`,
             derived: true,
           });
@@ -430,6 +446,10 @@ export function deadlines(s: Workspace, now = new Date()) {
               ? "Vyžaduje řešení"
               : "Plánováno",
           owner: "Fleet manažer",
+          vehicleId: plan.vehicleId,
+          driverId: null,
+          kind: "Servis",
+          detail: item.name,
           path: `/vehicles/${plan.vehicleId}/plan`,
           derived: true,
         });
@@ -444,6 +464,10 @@ export function deadlines(s: Workspace, now = new Date()) {
         km: null,
         state: "Vyžaduje řešení",
         owner: s.drivers.find((d) => d.id === t.driverId)?.name || "Řidič",
+        vehicleId: t.vehicleId,
+        driverId: t.driverId,
+        kind: "A6",
+        detail: "",
         path: `/trips/${t.id}`,
         derived: true,
       });
