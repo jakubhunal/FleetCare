@@ -109,6 +109,7 @@ export function valueOf<T>(
   items: TextItem[],
   patterns: RegExp[],
   parse: (raw: string) => T | undefined,
+  labelTest: (s: string) => boolean = isLabel,
 ): T | undefined {
   for (const label of items) {
     if (!patterns.some((r) => r.test(label.str.trim()))) continue;
@@ -120,7 +121,7 @@ export function valueOf<T>(
           Math.abs(i.x - label.x) <= 12 &&
           label.y - i.y > 4 &&
           label.y - i.y <= 35 &&
-          !isLabel(i.str),
+          !labelTest(i.str),
       )
       .sort((a, b) => b.y - a.y);
     const right = items
@@ -129,7 +130,7 @@ export function valueOf<T>(
           i.page === label.page &&
           Math.abs(i.y - label.y) <= 2 &&
           i.x >= label.x + label.width &&
-          !isLabel(i.str),
+          !labelTest(i.str),
       )
       .sort((a, b) => a.x - b.x);
     for (const candidate of [inline, below[0]?.str, right[0]?.str]) {

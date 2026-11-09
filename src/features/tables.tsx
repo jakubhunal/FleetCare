@@ -245,14 +245,19 @@ export function DriverTable({
         {
           key: "availability",
           label: "Aktuální provoz",
-          render: (d) =>
-            d.suspended
-              ? "Pozastaven"
-              : s.trips.some(
-                    (t) => t.driverId === d.id && t.state === "Probíhá",
-                  )
-                ? "Na trase"
-                : "Bez probíhající jízdy",
+          render: (d) => {
+            if (d.suspended) return "Pozastaven";
+            const trip = s.trips.find(
+              (t) => t.driverId === d.id && t.state === "Probíhá",
+            );
+            return trip ? (
+              <>
+                Na trase · <VRef id={trip.vehicleId} />
+              </>
+            ) : (
+              "Bez probíhající jízdy"
+            );
+          },
         },
       ]}
     />

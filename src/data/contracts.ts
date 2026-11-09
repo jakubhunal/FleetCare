@@ -128,6 +128,8 @@ export type JobStatus = {
     | "failed";
   missingFields?: string[];
   error?: string;
+  /** What the reading did, e.g. transactions read from a CCS statement. */
+  message?: string;
   /** Values read from an uploaded STK (gateway only). */
   fields?: StkFields;
 };

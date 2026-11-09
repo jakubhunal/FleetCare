@@ -52,6 +52,7 @@ const variants: Record<string, StatusVariant> = {
 const labels: Record<string, string> = {
   not_configured: "Služba není připojena",
   not_required: "Bez extrakce",
+  manual_entry: "Údaje doplňte ručně",
   stored: "Soubor uložen",
   uploading: "Ukládání",
   upload_failed: "Uložení selhalo",
@@ -74,6 +75,7 @@ const statuses = (values: readonly string[]): Record<string, StatusMetadata> =>
 const processingStatuses = statuses([
   "not_configured",
   "not_required",
+  "manual_entry",
   "queued",
   "processing",
   "completed",

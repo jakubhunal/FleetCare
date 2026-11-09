@@ -583,9 +583,9 @@ describe("Opravy z testů 7. 11.", () => {
   it("přiřazení zakázky projde s chybějícími údaji, nevhodné odmítne", () => {
     const s = fixture();
     s.vehicles[0].stkUntil = null;
-    expect(
-      suitability(s, s.orders[0], s.vehicles[0], s.drivers[0]).state,
-    ).toBe("Nelze vyhodnotit");
+    expect(suitability(s, s.orders[0], s.vehicles[0], s.drivers[0]).state).toBe(
+      "Nelze vyhodnotit",
+    );
     applyCommand(s, manager, {
       type: "order.assign",
       id: "o1",
@@ -667,5 +667,55 @@ describe("Opravy z testů 7. 11.", () => {
       ownerId: "veh-new",
       vehicleId: "veh-new",
     });
+  });
+});
+
+describe("Svěření při probíhající jízdě", () => {
+  function running() {
+    const s = fixture();
+    applyCommand(s, manager, {
+      type: "vehicle.assign",
+      vehicleId: "v1",
+      version: 1,
+      driverId: "d1",
+      from: "2026-11-01T08:00:00Z",
+      reason: "start",
+      odometer: null,
+    });
+    s.trips.push(
+      collections.trips.parse({
+        ...meta("jizda"),
+        vehicleId: "v1",
+        driverId: "d1",
+        orderId: null,
+        purpose: "Rozvoz",
+        from: "Praha",
+        to: "",
+        startAt: "2026-11-02T08:00:00.000Z",
+        endAt: null,
+        startKm: 1000,
+        endKm: null,
+        state: "Probíhá",
+      }),
+    );
+    return s;
+  }
+  it("vozidlo na jízdě nejde odebrat ani předat jinému řidiči", () => {
+    const s = running();
+    const v = s.vehicles.find((x) => x.id === "v1")!;
+    expect(() =>
+      applyCommand(s, manager, {
+        type: "vehicle.assign",
+        vehicleId: "v1",
+        version: v.version,
+        driverId: null,
+        from: "2026-11-02T10:00:00Z",
+        reason: "konec",
+        odometer: null,
+      }),
+    ).toThrow("je na jízdě");
+    expect(
+      s.assignments.find((a) => a.vehicleId === "v1" && !a.to)?.driverId,
+    ).toBe("d1");
   });
 });

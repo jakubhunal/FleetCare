@@ -129,6 +129,7 @@ export function OrderPage() {
                   ["Zákazník", o.customer],
                   ["Kontakt", o.contact || null],
                   ["Reference", o.reference || null],
+                  ["Číslo objednávky zákazníka", o.externalId || null],
                   ["Hmotnost", number(o.weightKg, "kg")],
                   ["Objem", number(o.volumeM3, "m³")],
                   ["Palety", number(o.pallets)],

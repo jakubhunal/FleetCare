@@ -12,7 +12,7 @@ import {
 } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, rename, rm } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ZodError } from "zod";
 import { matchAccount } from "./account-auth.mjs";
@@ -33,6 +33,7 @@ import {
   meta,
   roles,
   type Actor,
+  type Document,
   type Workspace,
 } from "../src/domain/models";
 import { commandSchema } from "../src/data/command-schema";
@@ -45,7 +46,13 @@ import {
   type ReceiptExtraction,
 } from "../src/domain/receipt-extract";
 import { readReceipt } from "./receipt-reader";
+import { readCcs } from "./ccs-reader";
+import type { CcsExtraction } from "../src/domain/ccs-extract";
+import { importCcsStatement } from "../src/domain/ccs";
 import { normalize } from "../src/lib/format";
+import { a5Items } from "../src/domain/automation";
+import { readOrder } from "./order-reader";
+import { createOrderFromMail } from "../src/domain/order-intake";
 
 const env = process.env;
 const port = Number(env.PORT || 8787);
@@ -127,12 +134,6 @@ async function mutate<T>(
 // ---------- e-mail through the Make webhook ----------
 const escapeHtml = (v: string) =>
   v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const mailCommands = new Set([
-  "fault.notify",
-  "trip.notify",
-  "notification.retry",
-  "notification.recipient",
-]);
 async function deliverNotifications(
   before: Workspace,
   after: Workspace,
@@ -249,7 +250,8 @@ function addDocument(
   storageKey: string,
   stk?: StkExtraction,
   receipt?: ReceiptExtraction,
-) {
+  ccs?: CcsExtraction,
+): { doc: Document; duplicate: boolean; message?: string } {
   const { input, file, stored } = session;
   const scope = scopedWorkspace(s, actor);
   const owners: Record<string, boolean> = {
@@ -290,14 +292,22 @@ function addDocument(
   if (duplicate) {
     // The same file uploaded again: a document stored before reading existed
     // gets the reading now instead of keeping "Služba není připojena".
-    const reading = stk || receipt;
-    if (reading && duplicate.extraction === "not_configured")
+    const reading = stk || receipt || ccs;
+    if (reading && duplicate.extraction === "not_configured") {
       Object.assign(duplicate, {
         extraction: reading.state,
-        error: reading.error,
+        error: reading.error || "",
         updatedAt: new Date().toISOString(),
         version: duplicate.version + 1,
       });
+      // A statement uploaded before reading existed gets its transactions.
+      if (ccs && s.statements.some((x) => x.id === duplicate.ownerId))
+        return {
+          doc: duplicate,
+          duplicate: true,
+          message: importCcsStatement(s, duplicate.ownerId, ccs).message,
+        };
+    }
     return { doc: duplicate, duplicate: true };
   }
   let ownerId = input.ownerId;
@@ -316,6 +326,10 @@ function addDocument(
     s.statements.push(statement);
     ownerId = statement.id;
   }
+  const message =
+    ccs && input.ownerType === "statement"
+      ? importCcsStatement(s, ownerId, ccs).message
+      : undefined;
   const m = meta(storageKey);
   const doc = documentSchema.parse({
     ...m,
@@ -337,17 +351,19 @@ function addDocument(
       ? stk.state
       : receipt
         ? receipt.state
-        : [
-              "Pracovní smlouva",
-              "Příloha",
-              "Dodací list",
-              "Servisní doklad",
-              "Pojištění",
-            ].includes(input.type)
-          ? "not_required"
-          : "not_configured",
+        : ccs
+          ? ccs.state
+          : [
+                "Pracovní smlouva",
+                "Příloha",
+                "Dodací list",
+                "Servisní doklad",
+                "Pojištění",
+              ].includes(input.type)
+            ? "not_required"
+            : "not_configured",
     jobId: null,
-    error: stk?.error || receipt?.error || "",
+    error: stk?.error || receipt?.error || ccs?.error || "",
     deletedAt: null,
   });
   // STK for an existing vehicle: check it is the same car, then move the STK
@@ -399,7 +415,7 @@ function addDocument(
     }
   }
   s.documents.push(doc);
-  return { doc, duplicate: false };
+  return { doc, duplicate: false, message };
 }
 
 // ---------- search ----------
@@ -526,6 +542,153 @@ const server = createServer(async (req, res) => {
       if (!actor) fail(401, "E-mail nebo heslo není správné.");
       return json(res, 200, actor);
     }
+    if (req.method === "POST" && path === "/v1/intake/mail") {
+      // E-mail intake from Make (M2): an order (FC-D08) becomes an order with
+      // the PDF attached, a CCS statement (FC-D17) goes through the same
+      // reading and pairing as Import CCS PDF. The same file twice is stored once.
+      const actor = actorOf(req)!;
+      if (actor.role !== "Fleet manažer")
+        fail(403, "Příjem e-mailů je jen pro automatizaci fleet manažera.");
+      const input = (await body(req, 9 * 1024 * 1024)) as {
+        run_id?: string;
+        payload?: {
+          document_type?: string;
+          attachment_name?: string;
+          message_id?: string;
+          data_base64?: string;
+        };
+      };
+      const p = input.payload || {};
+      const type =
+        p.document_type === "FC-D17"
+          ? ("CCS výpis" as const)
+          : p.document_type === "FC-D08"
+            ? ("Objednávka" as const)
+            : fail(422, "Neznámý typ přílohy, čekám FC-D08 nebo FC-D17.");
+      const data = Buffer.from(String(p.data_base64 || ""), "base64");
+      if (!data.length)
+        fail(422, "Příloha e-mailu je prázdná (chybí data_base64).");
+      if (data.length > fileLimits.extractionBytes)
+        fail(413, "Příloha e-mailu překračuje 5 MB.");
+      const name = String(p.attachment_name || "priloha.pdf")
+        .replace(/[\\/\x00-\x1F]/g, "_")
+        .slice(0, 200);
+      const hash = createHash("sha256").update(data).digest("hex");
+      await mkdir(filesDir, { recursive: true });
+      const tmp = join(filesDir, `${randomUUID()}.upload`);
+      await writeFile(tmp, data);
+      const bytes = new Uint8Array(data);
+      const ccs = type === "CCS výpis" ? await readCcs(bytes) : undefined;
+      const order = type === "Objednávka" ? await readOrder(bytes) : undefined;
+      const storageKey = randomUUID();
+      const session: UploadSession = {
+        actor,
+        input: {
+          ownerType: ccs ? "statement" : "order",
+          ownerId: "",
+          type,
+          files: [],
+          idempotencyKey: `mail:${p.message_id || ""}:${name}`,
+        },
+        file: { name, mime: "application/pdf", size: data.length },
+        stored: { path: tmp, hash, size: data.length },
+      };
+      const result = await mutate((next) => {
+        if (order) {
+          const known = next.documents.find(
+            (d) =>
+              !d.deletedAt &&
+              d.hash === hash &&
+              d.type === "Objednávka" &&
+              d.ownerType === "order",
+          );
+          if (known) return { doc: known, duplicate: true, message: "" };
+          const created = createOrderFromMail(next, order, {
+            fileName: name,
+            receivedAt: new Date().toISOString(),
+          });
+          session.input.ownerId = created.id;
+          const added = addDocument(next, actor, session, storageKey);
+          Object.assign(added.doc, {
+            source: "import",
+            extraction: order.state,
+            error:
+              order.error ||
+              (order.missingFields.length
+                ? `Chybí: ${order.missingFields.join(", ")}.`
+                : ""),
+          });
+          return {
+            ...added,
+            message: `Zakázka ${created.number} (${created.state}).`,
+          };
+        }
+        const added = addDocument(
+          next,
+          actor,
+          session,
+          storageKey,
+          undefined,
+          undefined,
+          ccs,
+        );
+        if (!added.duplicate) added.doc.source = "import";
+        return { ...added, message: added.message || "" };
+      });
+      if (result.duplicate) await rm(tmp, { force: true });
+      else await rename(tmp, join(filesDir, storageKey));
+      return json(res, 200, {
+        ok: true,
+        request_id: `req_mail_${String(input.run_id || Date.now()).replace(/[^\w-]/g, "")}`,
+        status: "ok",
+        data: {
+          document_id: result.doc.id,
+          owner_type: result.doc.ownerType,
+          owner_id: result.doc.ownerId,
+          duplicate: result.duplicate,
+          state: result.doc.extraction,
+          message: result.duplicate
+            ? "Příloha už byla přijata, nic nového nevzniklo."
+            : result.message,
+          error: result.doc.error || undefined,
+        },
+        errors: [],
+      });
+    }
+    if (req.method === "POST" && path === "/v1/automation/a5") {
+      // Daily Make run (M2, branch A5): deadlines due within 30 days or
+      // overdue. Each deadline and warning level is handed over once, so a
+      // repeated run costs no Make operations; ?preview=1 claims nothing.
+      const actor = actorOf(req)!;
+      if (actor.role !== "Fleet manažer")
+        fail(403, "Termíny pro upozornění jsou jen pro fleet manažera.");
+      const input = ((await body(req).catch(() => ({}))) || {}) as {
+        run_id?: string;
+      };
+      const preview = /[?&]preview=1\b/.test(req.url || "");
+      const { workspace } = await snapshot();
+      const file = join(dataDir, "a5-claims.json");
+      const claims = JSON.parse(
+        await readFile(file, "utf8").catch(() => "{}"),
+      ) as Record<string, string>;
+      const items = a5Items(workspace).filter(
+        (i) => !claims[`${i.item_key}:${i.level}`],
+      );
+      if (!preview && items.length) {
+        const now = new Date().toISOString();
+        for (const i of items) claims[`${i.item_key}:${i.level}`] = now;
+        await mkdir(dataDir, { recursive: true });
+        await writeFile(`${file}.tmp`, JSON.stringify(claims, null, 1));
+        await rename(`${file}.tmp`, file);
+      }
+      return json(res, 200, {
+        ok: true,
+        request_id: `req_a5_${String(input.run_id || Date.now()).replace(/[^\w-]/g, "")}`,
+        status: "ok",
+        data: { items },
+        errors: [],
+      });
+    }
     if (req.method === "GET" && path === "/v1/workspace") {
       const actor = actorOf(req, false);
       const { workspace } = await snapshot();
@@ -574,8 +737,9 @@ const server = createServer(async (req, res) => {
       }
       await mutate(async (next, snap) => {
         applyCommand(next, actor, command);
-        if (mailCommands.has(command.type))
-          await deliverNotifications(snap.workspace, next, snap.settings);
+        // Any command may queue e-mails (a new fault queues three); only
+        // notifications created or changed by this command are sent.
+        await deliverNotifications(snap.workspace, next, snap.settings);
       });
       processed.set(key as string, {
         hash,
@@ -669,8 +833,25 @@ const server = createServer(async (req, res) => {
               session.file.mime,
             )
           : undefined;
-      const { doc, duplicate } = await mutate((next) =>
-        addDocument(next, session.actor, session, storageKey, stk, receipt),
+      const ccs =
+        session.input.type === "CCS výpis"
+          ? await readCcs(
+              await readFile(session.stored!.path).then(
+                (b) => new Uint8Array(b),
+                () => new Uint8Array(),
+              ),
+            )
+          : undefined;
+      const { doc, duplicate, message } = await mutate((next) =>
+        addDocument(
+          next,
+          session.actor,
+          session,
+          storageKey,
+          stk,
+          receipt,
+          ccs,
+        ),
       );
       if (duplicate) await rm(session.stored!.path, { force: true });
       else await rename(session.stored!.path, join(filesDir, storageKey));
@@ -690,13 +871,24 @@ const server = createServer(async (req, res) => {
                 missingFields: receipt.missingFields,
                 error: doc.error || undefined,
               }
-            : {
-                jobId: doc.id,
-                state:
-                  doc.extraction === "not_required" || duplicate
-                    ? "completed"
-                    : "not_configured",
-              };
+            : ccs
+              ? {
+                  jobId: doc.id,
+                  state: doc.extraction as JobStatus["state"],
+                  error: doc.error || undefined,
+                  message:
+                    message ||
+                    (duplicate
+                      ? "Tento výpis už byl nahrán, transakce se znovu nezakládají."
+                      : undefined),
+                }
+              : {
+                  jobId: doc.id,
+                  state:
+                    doc.extraction === "not_required" || duplicate
+                      ? "completed"
+                      : "not_configured",
+                };
       jobs.set(doc.id, session.result);
       return json(res, 200, session.result);
     }

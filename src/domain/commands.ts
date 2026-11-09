@@ -418,6 +418,23 @@ export function applyCommand(
         "driverId",
       );
     }
+    // A running trip keeps its vehicle and driver until it is ended.
+    const running = s.trips.find(
+      (t) =>
+        t.state === "Probíhá" &&
+        (t.vehicleId === c.vehicleId ||
+          (!!c.driverId && t.driverId === c.driverId)) &&
+        !(t.vehicleId === c.vehicleId && t.driverId === c.driverId),
+    );
+    if (running) {
+      const who = s.drivers.find((d) => d.id === running.driverId)?.name;
+      const car = s.vehicles.find((v) => v.id === running.vehicleId)?.spz;
+      throw new DomainError(
+        `${who || "Řidič"} je na jízdě s vozidlem ${car || ""} (od ${running.from}). Svěření lze změnit až po ukončení jízdy.`,
+        "driverId",
+        409,
+      );
+    }
     for (const a of s.assignments)
       if (a.vehicleId === c.vehicleId && (!a.to || a.to > c.from)) {
         ensure(
@@ -792,7 +809,7 @@ export function applyCommand(
     }
   }
 }
-function nextOrderNumber(s: Workspace) {
+export function nextOrderNumber(s: Workspace) {
   const year = new Date().getFullYear();
   const prefix = `ZK-${year}-`;
   const used = s.orders

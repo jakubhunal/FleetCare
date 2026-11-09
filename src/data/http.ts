@@ -29,6 +29,7 @@ const jobSchema = z.object({
   ]),
   missingFields: z.array(z.string()).optional(),
   error: z.string().optional(),
+  message: z.string().optional(),
   fields: stkFieldsSchema.optional(),
 });
 const actorSchema = z.object({
